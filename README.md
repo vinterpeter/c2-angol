@@ -1,6 +1,8 @@
 # C2 Angol — szókincs, szinonimák, frázisok, katonai angol
 
-Offline, egyetlen mappás tanulóoldal. Nyisd meg az `index.html`-t duplakattintással — nem kell szerver, nem kell internet.
+**Élőben:** https://vinterpeter.github.io/c2-angol/
+
+Offline tanulóoldal. Nyisd meg az `index.html`-t duplakattintással, vagy látogasd meg a fenti élő oldalt — az oldalsávban az **Offline letöltés** gombbal egyetlen önálló HTML-fájlként mentheted a gépedre, ami attól kezdve internet nélkül is teljesen működik (a haladás is megmarad benne, csak böngészőnként/másolatonként külön-külön).
 
 ## Modulok
 
@@ -28,10 +30,6 @@ Mezők:
 - `MIL`: `{t, cat, hu, en, ex, abbr}`.
 
 A haladás a böngésző `localStorage`-ában él (`c2angol.v1` kulcs), az Export gombbal menthető, Importtal visszatölthető.
-
-## Design terv
-
-Az `design/` mappában egy Claude Design canvas forrása (asztali 1440px és mobil 390px nézet, plusz két alternatív irány vázlata) — jelenleg csak referencia, az élő app (`index.html`) egyedi, kézzel írt UI-t használ.
 
 ## Ellenőrzés
 
