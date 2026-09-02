@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>C2 Angol — szókincs, szinonimák, frázisok, katonai angol</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,500;0,6..72,600;1,6..72,500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="logo">C2</span>
+      <div>
+        <h1>C2 Angol</h1>
+        <p class="sub">szókincs · frázisok · katonai</p>
+      </div>
+    </div>
+
+    <nav class="nav" id="tabs">
+      <button class="tab active" data-tab="words">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h12a3 3 0 0 1 3 3v12H7a3 3 0 0 0-3 3z"></path><path d="M4 5v18"></path><path d="M9 10h6"></path></svg>
+        <span class="nav-label">Szavak</span>
+        <span class="nav-count" id="nav-count-words"></span>
+      </button>
+      <button class="tab" data-tab="cards">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="14" height="14" rx="2"></rect><path d="M7 4h12a2 2 0 0 1 2 2v12"></path></svg>
+        <span class="nav-label">Kártyák</span>
+        <span class="nav-count due" id="nav-count-cards"></span>
+      </button>
+      <button class="tab" data-tab="syn">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h7"></path><path d="M4 12h10"></path><path d="M4 17h7"></path><path d="M16 9l3 3-3 3"></path></svg>
+        <span class="nav-label">Szinonima kvíz</span>
+      </button>
+      <button class="tab" data-tab="phrases">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 8h10"></path><path d="M5 12h14"></path><path d="M9 16h6"></path></svg>
+        <span class="nav-label">Frázisok</span>
+        <span class="nav-count" id="nav-count-phrases"></span>
+      </button>
+      <button class="tab" data-tab="mil">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"></path></svg>
+        <span class="nav-label">Katonai</span>
+        <span class="nav-count" id="nav-count-mil"></span>
+      </button>
+      <button class="tab" data-tab="stats">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10"></path><path d="M10 20V4"></path><path d="M16 20v-7"></path><path d="M22 20H2"></path></svg>
+        <span class="nav-label">Statisztika</span>
+      </button>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="streak-box">
+        <span class="streak-label">Sorozat</span>
+        <span class="streak-val" id="streak-val">0 nap</span>
+        <span class="streak-sub" id="streak-sub">Még nincs ismétlés ma</span>
+      </div>
+      <div class="sidebar-actions">
+        <button id="btn-download" class="icon-text-btn" hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12"></path><path d="M6 12l6 6 6-6"></path><path d="M4 20h16"></path></svg>
+          <span>Offline letöltés</span>
+        </button>
+        <button id="btn-theme" class="icon-text-btn" title="Téma váltása">
+          <svg id="theme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></svg>
+          <span id="theme-label">Sötét téma</span>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <div class="content">
+  <main id="main">
+
+  <!-- ================= SZAVAK ================= -->
+  <section class="tab-panel active" id="panel-words">
+    <div class="words-layout">
+    <div class="words-main">
+      <div class="toolbar">
+        <div class="search-wrap">
+          <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+          <input type="search" id="words-search" placeholder="Keresés szóra, jelentésre, szinonimára…">
+        </div>
+        <div class="chips segmented" id="words-lvl">
+          <button class="chip active" data-lvl="all">Mind</button>
+          <button class="chip" data-lvl="B2">B2</button>
+          <button class="chip" data-lvl="C1">C1</button>
+          <button class="chip" data-lvl="C2">C2</button>
+        </div>
+        <select id="words-status">
+          <option value="all">Minden szó</option>
+          <option value="new">Új (még nem tanult)</option>
+          <option value="learning">Tanulás alatt</option>
+          <option value="known">Tudom</option>
+          <option value="due">Esedékes ismétlés</option>
+        </select>
+      </div>
+      <div class="chips" id="words-tags"></div>
+      <p class="hint" id="words-count"></p>
+      <div class="word-list" id="words-list"></div>
+    </div>
+    <aside class="words-aside">
+      <div class="due-card">
+        <span class="due-label">Ma esedékes</span>
+        <span class="due-num" id="due-total">0</span>
+        <span class="due-breakdown" id="due-breakdown">nincs esedékes ismétlés</span>
+        <button class="primary due-start" id="due-start">Ismétlés indítása</button>
+      </div>
+      <div class="box-card">
+        <span class="box-label">Leitner-dobozok · szavak</span>
+        <div class="box-chart" id="box-chart"></div>
+        <div class="box-legend" id="box-legend"></div>
+      </div>
+      <div class="quick-card">
+        <span class="quick-label">Gyors gyakorlat</span>
+        <button class="quick-row" data-quick="syn">Szinonima kvíz · 15<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"></path></svg></button>
+        <button class="quick-row" data-quick="cloze">Hiányos mondat · 15<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"></path></svg></button>
+        <button class="quick-row" data-quick="nato">NATO-ábécé betűzés<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"></path></svg></button>
+      </div>
+    </aside>
+    </div>
+  </section>
+
+  <!-- ================= KÁRTYÁK ================= -->
+  <section class="tab-panel" id="panel-cards">
+    <div class="setup" id="cards-setup">
+      <h2>Tanulókártyák</h2>
+      <p class="hint">Leitner-rendszer: a helyes válasz feljebb lépteti a kártyát (1 → 3 → 7 → 14 → 30 nap), a hibás visszaküldi az elejére.</p>
+      <div class="setup-grid">
+        <label>Forrás
+          <select id="cards-source">
+            <option value="all">Minden forrás</option>
+            <option value="words">C2 szavak</option>
+            <option value="phrases">Frázisok, szófordulatok</option>
+            <option value="mil">Katonai angol</option>
+          </select>
+        </label>
+        <label>Kiválasztás
+          <select id="cards-pick">
+            <option value="due">Esedékes + új (ajánlott)</option>
+            <option value="new">Csak új</option>
+            <option value="weak">Gyenge (0–1. doboz)</option>
+            <option value="all">Minden, véletlen sorrendben</option>
+          </select>
+        </label>
+        <label>Szint (szavak, frázisok)
+          <select id="cards-lvl">
+            <option value="all">Minden szint</option>
+            <option value="B2">B2</option>
+            <option value="C1">C1</option>
+            <option value="C2">C2</option>
+          </select>
+        </label>
+        <label>Irány
+          <select id="cards-dir">
+            <option value="en">Angol → magyar</option>
+            <option value="hu">Magyar → angol</option>
+          </select>
+        </label>
+        <label>Kártyák száma
+          <select id="cards-n">
+            <option>10</option><option selected>20</option><option>30</option><option>50</option>
+          </select>
+        </label>
+      </div>
+      <p class="hint" id="cards-avail"></p>
+      <button class="primary" id="cards-start">Indítás</button>
+      <p class="hint kbd-hint">Billentyűk: <kbd>Space</kbd> felfed · <kbd>J</kbd> tudtam · <kbd>F</kbd> nem tudtam · <kbd>H</kbd> kiejtés</p>
+    </div>
+
+    <div class="drill" id="cards-drill" hidden>
+      <div class="drill-head">
+        <span id="cards-progress">1 / 20</span>
+        <div class="bar"><div class="bar-fill" id="cards-bar"></div></div>
+        <button class="icon-btn" id="cards-quit" title="Kilépés">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12"></path><path d="M18 6L6 18"></path></svg>
+        </button>
+      </div>
+      <div class="card" id="card">
+        <div class="card-front">
+          <div class="card-box" id="card-box"></div>
+          <button class="icon-btn speak" id="card-speak" title="Kiejtés (H)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10v4h4l5 4V6L8 10z"></path><path d="M16 9a4 4 0 0 1 0 6"></path><path d="M18.5 6.5a8 8 0 0 1 0 11"></path></svg>
+          </button>
+          <div class="card-word" id="card-word"></div>
+          <div class="card-meta" id="card-meta"></div>
+        </div>
+        <div class="card-back" id="card-back" hidden></div>
+      </div>
+      <div class="drill-actions">
+        <button class="primary big" id="card-reveal">Felfedés (Space)</button>
+        <div id="card-grade" hidden>
+          <button class="danger big" id="card-fail">Nem tudtam (F)</button>
+          <button class="ok big" id="card-ok">Tudtam (J)</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="result" id="cards-result" hidden></div>
+  </section>
+
+  <!-- ================= SZINONIMA KVÍZ ================= -->
+  <section class="tab-panel" id="panel-syn">
+    <div class="setup" id="syn-setup">
+      <h2>Szinonima kvíz</h2>
+      <div class="setup-grid">
+        <label>Feladattípus
+          <select id="syn-mode">
+            <option value="w2s">Szó → válaszd ki a szinonimát</option>
+            <option value="s2w">Szinonima → melyik C2 szó?</option>
+            <option value="d2w">Definíció → melyik szó?</option>
+            <option value="type">Magyar jelentés → írd be a szót</option>
+            <option value="ant">Szó → válaszd ki az ELLENTÉTÉT</option>
+          </select>
+        </label>
+        <label>Témakör
+          <select id="syn-tag"><option value="all">Minden</option></select>
+        </label>
+        <label>Szint
+          <select id="syn-lvl">
+            <option value="all">Minden szint</option>
+            <option value="B2">B2</option>
+            <option value="C1">C1</option>
+            <option value="C2">C2</option>
+          </select>
+        </label>
+        <label>Kérdések száma
+          <select id="syn-n"><option>10</option><option selected>15</option><option>25</option></select>
+        </label>
+      </div>
+      <button class="primary" id="syn-start">Indítás</button>
+      <p class="hint kbd-hint">Billentyűk: <kbd>1</kbd>–<kbd>4</kbd> válasz · <kbd>Enter</kbd> tovább</p>
+    </div>
+    <div class="quiz" id="syn-quiz" hidden></div>
+    <div class="result" id="syn-result" hidden></div>
+  </section>
+
+  <!-- ================= FRÁZISOK ================= -->
+  <section class="tab-panel" id="panel-phrases">
+    <div class="subtabs">
+      <button class="subtab active" data-sub="browse">Böngészés</button>
+      <button class="subtab" data-sub="cloze">Hiányos mondat</button>
+      <button class="subtab" data-sub="meaning">Jelentés-kvíz</button>
+    </div>
+    <div class="sub-panel active" id="phr-browse">
+      <div class="toolbar">
+        <div class="search-wrap">
+          <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+          <input type="search" id="phr-search" placeholder="Keresés frázisra, jelentésre…">
+        </div>
+        <select id="phr-type">
+          <option value="all">Minden típus</option>
+          <option value="idiom">Idióma</option>
+          <option value="collocation">Kollokáció</option>
+          <option value="expression">Kifejezés, kötőelem</option>
+          <option value="phrasal">Phrasal verb</option>
+          <option value="latin">Latin / francia</option>
+          <option value="proverb">Közmondás</option>
+        </select>
+        <select id="phr-lvl">
+          <option value="all">Minden szint</option>
+          <option value="B2">B2</option>
+          <option value="C1">C1</option>
+          <option value="C2">C2</option>
+        </select>
+      </div>
+      <p class="hint" id="phr-count"></p>
+      <div class="word-list" id="phr-list"></div>
+    </div>
+    <div class="sub-panel" id="phr-cloze">
+      <div class="setup" id="cloze-setup">
+        <h2>Hiányos mondat</h2>
+        <p class="hint">A példamondatból hiányzik a kulcsszó — válaszd ki a helyeset.</p>
+        <button class="primary" id="cloze-start">Indítás (15 kérdés)</button>
+      </div>
+      <div class="quiz" id="cloze-quiz" hidden></div>
+      <div class="result" id="cloze-result" hidden></div>
+    </div>
+    <div class="sub-panel" id="phr-meaning">
+      <div class="setup" id="meaning-setup">
+        <h2>Jelentés-kvíz</h2>
+        <p class="hint">Frázis → melyik a helyes jelentés? (angol definíció)</p>
+        <button class="primary" id="meaning-start">Indítás (15 kérdés)</button>
+      </div>
+      <div class="quiz" id="meaning-quiz" hidden></div>
+      <div class="result" id="meaning-result" hidden></div>
+    </div>
+  </section>
+
+  <!-- ================= KATONAI ================= -->
+  <section class="tab-panel" id="panel-mil">
+    <div class="subtabs">
+      <button class="subtab active" data-sub="browse">Szószedet</button>
+      <button class="subtab" data-sub="quiz">Kvíz</button>
+      <button class="subtab" data-sub="nato">NATO-ábécé</button>
+    </div>
+    <div class="sub-panel active" id="mil-browse">
+      <div class="toolbar">
+        <div class="search-wrap">
+          <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+          <input type="search" id="mil-search" placeholder="Keresés kifejezésre, magyar jelentésre, rövidítésre…">
+        </div>
+      </div>
+      <div class="chips" id="mil-cats"></div>
+      <p class="hint" id="mil-count"></p>
+      <div class="word-list" id="mil-list"></div>
+    </div>
+    <div class="sub-panel" id="mil-quiz">
+      <div class="setup" id="milq-setup">
+        <h2>Katonai kvíz</h2>
+        <div class="setup-grid">
+          <label>Feladattípus
+            <select id="milq-mode">
+              <option value="en2hu">Angol kifejezés → magyar jelentés</option>
+              <option value="hu2en">Magyar → angol kifejezés</option>
+              <option value="def2en">Definíció → kifejezés</option>
+              <option value="abbr">Rövidítés → mit jelent?</option>
+            </select>
+          </label>
+          <label>Kategória
+            <select id="milq-cat"><option value="all">Minden</option></select>
+          </label>
+        </div>
+        <button class="primary" id="milq-start">Indítás (15 kérdés)</button>
+      </div>
+      <div class="quiz" id="milq-quiz" hidden></div>
+      <div class="result" id="milq-result" hidden></div>
+    </div>
+    <div class="sub-panel" id="mil-nato">
+      <h2>NATO betűző ábécé</h2>
+      <div class="nato-grid" id="nato-grid"></div>
+      <div class="setup">
+        <h3>Betűzési gyakorlat</h3>
+        <p class="hint">Betűzd ki a szót a NATO-ábécével, aztán fedd fel és értékeld magad. Vagy: betű → válaszd ki a kódszót.</p>
+        <div class="row">
+          <button class="primary" id="nato-spell">Szó kibetűzése</button>
+          <button class="primary" id="nato-letter">Betű → kódszó kvíz</button>
+        </div>
+      </div>
+      <div class="quiz" id="nato-quiz" hidden></div>
+    </div>
+  </section>
+
+  <!-- ================= STATISZTIKA ================= -->
+  <section class="tab-panel" id="panel-stats">
+    <h2>Haladás</h2>
+    <div class="stat-tiles" id="stat-tiles"></div>
+    <h3>Napi ismétlések (utolsó 21 nap)</h3>
+    <canvas id="stat-chart" height="160"></canvas>
+    <h3>Kvíz-pontosság</h3>
+    <div id="stat-quiz"></div>
+    <h3>Adatok</h3>
+    <div class="row">
+      <button id="btn-export">Export (JSON)</button>
+      <button id="btn-import">Import</button>
+      <input type="file" id="import-file" accept="application/json" hidden>
+      <button class="danger" id="btn-wipe">Minden haladás törlése</button>
+    </div>
+    <p class="hint">A haladás csak ebben a böngészőben, a localStorage-ban él. Az export gombbal mentheted, az importtal visszatöltheted.</p>
+  </section>
+
+  </main>
+  </div>
+</div>
+
+<div class="toast" id="toast" hidden></div>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
