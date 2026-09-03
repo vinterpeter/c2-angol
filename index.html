@@ -32,10 +32,6 @@
         <span class="nav-label">Kártyák</span>
         <span class="nav-count due" id="nav-count-cards"></span>
       </button>
-      <button class="tab" data-tab="syn">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h7"></path><path d="M4 12h10"></path><path d="M4 17h7"></path><path d="M16 9l3 3-3 3"></path></svg>
-        <span class="nav-label">Szinonima kvíz</span>
-      </button>
       <button class="tab" data-tab="phrases">
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 8h10"></path><path d="M5 12h14"></path><path d="M9 16h6"></path></svg>
         <span class="nav-label">Frázisok</span>
@@ -113,7 +109,6 @@
       </div>
       <div class="quick-card">
         <span class="quick-label">Gyors gyakorlat</span>
-        <button class="quick-row" data-quick="syn">Szinonima kvíz · 15<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"></path></svg></button>
         <button class="quick-row" data-quick="cloze">Hiányos mondat · 15<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"></path></svg></button>
         <button class="quick-row" data-quick="nato">NATO-ábécé betűzés<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"></path></svg></button>
       </div>
@@ -125,38 +120,49 @@
   <section class="tab-panel" id="panel-cards">
     <div class="setup" id="cards-setup">
       <h2>Tanulókártyák</h2>
-      <p class="hint">Leitner-rendszer: a helyes válasz feljebb lépteti a kártyát (1 → 3 → 7 → 14 → 30 nap), a hibás visszaküldi az elejére.</p>
-      <div class="setup-grid">
-        <label>Forrás
-          <select id="cards-source">
-            <option value="all">Minden forrás</option>
-            <option value="words">C2 szavak</option>
-            <option value="phrases">Frázisok, szófordulatok</option>
-            <option value="mil">Katonai angol</option>
-          </select>
-        </label>
-        <label>Kiválasztás
-          <select id="cards-pick">
-            <option value="due">Esedékes + új (ajánlott)</option>
-            <option value="new">Csak új</option>
-            <option value="weak">Gyenge (0–1. doboz)</option>
-            <option value="all">Minden, véletlen sorrendben</option>
-          </select>
-        </label>
-        <label>Irány
-          <select id="cards-dir">
-            <option value="en">Angol → magyar</option>
-            <option value="hu">Magyar → angol</option>
-          </select>
-        </label>
-        <label>Kártyák száma
-          <select id="cards-n">
-            <option>10</option><option selected>20</option><option>30</option><option>50</option>
-          </select>
-        </label>
+      <p class="hint">Így működik: minden kártyának van egy "doboza" (0–5. szint). Ha tudtad a választ, a kártya eggyel feljebb lép, és egyre ritkábban kérdezzük vissza (1 → 3 → 7 → 14 → 30 nap múlva). Ha nem tudtad, visszaesik az elejére, és hamarosan újra jön. Így a nehéz szavakkal automatikusan többet gyakorolsz, a már megtanultakkal kevesebbet.</p>
+
+      <div class="cards-quick">
+        <div>
+          <span class="cards-quick-label">Miből?</span>
+          <div class="chips segmented" id="cards-source-chips">
+            <button class="chip active" data-val="all">Minden</button>
+            <button class="chip" data-val="words">Szavak</button>
+            <button class="chip" data-val="phrases">Frázisok</button>
+            <button class="chip" data-val="mil">Katonai</button>
+          </div>
+        </div>
+        <div>
+          <span class="cards-quick-label">Milyen irányban?</span>
+          <div class="chips segmented" id="cards-dir-chips">
+            <button class="chip active" data-val="en">Angol → magyar</button>
+            <button class="chip" data-val="hu">Magyar → angol</button>
+          </div>
+        </div>
       </div>
+
       <p class="hint" id="cards-avail"></p>
-      <button class="primary" id="cards-start">Indítás</button>
+      <button class="primary big" id="cards-start">Indítás</button>
+
+      <details class="cards-advanced">
+        <summary>További beállítások</summary>
+        <div class="setup-grid">
+          <label>Melyik kártyák
+            <select id="cards-pick">
+              <option value="due">Esedékes + új (ajánlott)</option>
+              <option value="new">Csak új</option>
+              <option value="weak">Gyenge (0–1. doboz)</option>
+              <option value="all">Minden, véletlen sorrendben</option>
+            </select>
+          </label>
+          <label>Kártyák száma
+            <select id="cards-n">
+              <option>10</option><option selected>20</option><option>30</option><option>50</option>
+            </select>
+          </label>
+        </div>
+      </details>
+
       <p class="hint kbd-hint">Billentyűk: <kbd>Space</kbd> felfed · <kbd>J</kbd> tudtam · <kbd>F</kbd> nem tudtam · <kbd>H</kbd> kiejtés</p>
     </div>
 
@@ -189,34 +195,6 @@
     </div>
 
     <div class="result" id="cards-result" hidden></div>
-  </section>
-
-  <!-- ================= SZINONIMA KVÍZ ================= -->
-  <section class="tab-panel" id="panel-syn">
-    <div class="setup" id="syn-setup">
-      <h2>Szinonima kvíz</h2>
-      <div class="setup-grid">
-        <label>Feladattípus
-          <select id="syn-mode">
-            <option value="w2s">Szó → válaszd ki a szinonimát</option>
-            <option value="s2w">Szinonima → melyik C2 szó?</option>
-            <option value="d2w">Definíció → melyik szó?</option>
-            <option value="type">Magyar jelentés → írd be a szót</option>
-            <option value="ant">Szó → válaszd ki az ELLENTÉTÉT</option>
-          </select>
-        </label>
-        <label>Témakör
-          <select id="syn-tag"><option value="all">Minden</option></select>
-        </label>
-        <label>Kérdések száma
-          <select id="syn-n"><option>10</option><option selected>15</option><option>25</option></select>
-        </label>
-      </div>
-      <button class="primary" id="syn-start">Indítás</button>
-      <p class="hint kbd-hint">Billentyűk: <kbd>1</kbd>–<kbd>4</kbd> válasz · <kbd>Enter</kbd> tovább</p>
-    </div>
-    <div class="quiz" id="syn-quiz" hidden></div>
-    <div class="result" id="syn-result" hidden></div>
   </section>
 
   <!-- ================= FRÁZISOK ================= -->

@@ -155,6 +155,9 @@ button.big { padding: .85rem 1.4rem; font-size: 1.02rem; }
   padding: .32rem .8rem; font-size: .85rem; cursor: pointer; font-weight: 600; font-family: var(--font-sans);
 }
 .chip.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.chips.segmented { background: var(--panel-2); border-radius: 8px; padding: 3px; gap: 2px; display: inline-flex; }
+.chips.segmented .chip { border: none; background: transparent; border-radius: 6px; padding: .5rem .9rem; color: var(--text); }
+.chips.segmented .chip.active { background: var(--panel); color: var(--text); box-shadow: var(--shadow); }
 .tag {
   display: inline-block; background: var(--panel-2); color: var(--muted); border-radius: 999px;
   padding: .12rem .6rem; font-size: .76rem; font-weight: 600;
@@ -214,6 +217,13 @@ button.big { padding: .85rem 1.4rem; font-size: 1.02rem; }
 .setup-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: .8rem; margin: .9rem 0; }
 .setup-grid label { display: flex; flex-direction: column; gap: .35rem; font-size: .82rem; color: var(--muted); font-weight: 600; }
 .kbd-hint { margin-top: .9rem; }
+
+.cards-quick { display: flex; gap: 2.2rem; flex-wrap: wrap; margin: 1.1rem 0; }
+.cards-quick-label { display: block; font-size: .78rem; font-weight: 600; color: var(--muted); margin-bottom: .5rem; }
+.cards-advanced { margin-top: 1rem; }
+.cards-advanced summary { cursor: pointer; font-size: .85rem; font-weight: 600; color: var(--muted); }
+.cards-advanced summary:hover { color: var(--text); }
+.cards-advanced .setup-grid { margin-top: .8rem; }
 
 .drill-head { display: flex; align-items: center; gap: .8rem; margin-bottom: .9rem; }
 .bar { flex: 1; height: 6px; background: var(--panel-2); border-radius: 4px; overflow: hidden; }

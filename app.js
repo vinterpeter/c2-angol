@@ -26,7 +26,7 @@ function toast(msg) { const t = $('#toast'); t.textContent = msg; t.hidden = fal
 // ---------- Állapot ----------
 const DEFAULT = {
   words: {}, phrases: {}, mil: {},
-  quiz: { syn: [0, 0], cloze: [0, 0], meaning: [0, 0], milq: [0, 0], nato: [0, 0] },
+  quiz: { cloze: [0, 0], meaning: [0, 0], milq: [0, 0], nato: [0, 0] },
   log: {},          // 'YYYY-MM-DD' -> [reviews, correct]
   settings: { theme: 'auto', speak: true }
 };
@@ -147,8 +147,6 @@ let wordTag = 'all';
     const b = e.target.closest('.chip'); if (!b) return;
     wordTag = b.dataset.tag; $$('.chip', c).forEach(x => x.classList.toggle('active', x === b)); renderWords();
   });
-  const sel = $('#syn-tag');
-  TAGS.forEach(t => { const o = document.createElement('option'); o.value = t; o.textContent = t; sel.appendChild(o); });
 })();
 $('#words-search').addEventListener('input', renderWords);
 $('#words-status').addEventListener('change', renderWords);
@@ -243,12 +241,11 @@ function renderWordsAside() {
 }
 $('#due-start').addEventListener('click', () => {
   showTab('cards');
-  $('#cards-source').value = 'all'; $('#cards-pick').value = 'due';
+  setChipGroup('cards-source-chips', 'all'); $('#cards-pick').value = 'due';
   updateCardsAvail(); $('#cards-start').click();
 });
 $$('.quick-row').forEach(b => b.addEventListener('click', () => {
   const q = b.dataset.quick;
-  if (q === 'syn') { showTab('syn'); $('#syn-start').click(); }
   if (q === 'cloze') { showTab('phrases'); $('#panel-phrases .subtab[data-sub="cloze"]').click(); $('#cloze-start').click(); }
   if (q === 'nato') { showTab('mil'); $('#panel-mil .subtab[data-sub="nato"]').click(); $('#nato-spell').click(); }
 }));
@@ -393,6 +390,11 @@ $('#crisis-list').addEventListener('click', e => {
 // ============================================================
 // KÁRTYÁK (Leitner)
 // ============================================================
+function chipGroupValue(id) { const active = $(`#${id} .chip.active`); return active ? active.dataset.val : null; }
+function setChipGroup(id, val) { $$(`#${id} .chip`).forEach(c => c.classList.toggle('active', c.dataset.val === val)); }
+$('#cards-source-chips').addEventListener('click', e => { const b = e.target.closest('.chip'); if (!b) return; setChipGroup('cards-source-chips', b.dataset.val); updateCardsAvail(); });
+$('#cards-dir-chips').addEventListener('click', e => { const b = e.target.closest('.chip'); if (!b) return; setChipGroup('cards-dir-chips', b.dataset.val); });
+
 // Egységes kártya-nézet a három forrásra
 function toCard(source, item) {
   if (source === 'words') return { key: item.w, store: 'words', front: item.w, meta: `${item.pos} · ${item.ipa}`, hu: item.hu, en: item.en, ex: item.ex, ex_hu: item.ex_hu, syn: item.syn, ant: item.ant, col: item.col, speak: item.w };
@@ -419,18 +421,18 @@ function pickCards(src, pick) {
   return shuffle(sel).map(x => x.c);
 }
 function updateCardsAvail() {
-  const src = $('#cards-source').value, pick = $('#cards-pick').value;
+  const src = chipGroupValue('cards-source-chips'), pick = $('#cards-pick').value;
   const n = pickCards(src, pick).length;
   $('#cards-avail').textContent = `Elérhető kártyák: ${n}`;
 }
-['#cards-source', '#cards-pick'].forEach(s => $(s).addEventListener('change', updateCardsAvail));
+$('#cards-pick').addEventListener('change', updateCardsAvail);
 
 const drill = { cards: [], i: 0, dir: 'en', revealed: false, ok: 0, missed: [] };
 $('#cards-start').addEventListener('click', () => {
-  const src = $('#cards-source').value, pick = $('#cards-pick').value, n = +$('#cards-n').value;
+  const src = chipGroupValue('cards-source-chips'), pick = $('#cards-pick').value, n = +$('#cards-n').value;
   const cards = pickCards(src, pick).slice(0, n);
   if (!cards.length) { toast('Nincs kártya ehhez a kiválasztáshoz'); return; }
-  Object.assign(drill, { cards, i: 0, dir: $('#cards-dir').value, revealed: false, ok: 0, missed: [] });
+  Object.assign(drill, { cards, i: 0, dir: chipGroupValue('cards-dir-chips'), revealed: false, ok: 0, missed: [] });
   $('#cards-setup').hidden = true; $('#cards-result').hidden = true; $('#cards-drill').hidden = false;
   showCard();
 });
@@ -558,7 +560,7 @@ function runQuiz(container, resultEl, questions, opts) {
   render();
 }
 // egyetlen globális key handler kvízekhez
-const quizContainers = ['#syn-quiz', '#cloze-quiz', '#meaning-quiz', '#milq-quiz', '#nato-quiz'].map(s => $(s));
+const quizContainers = ['#cloze-quiz', '#meaning-quiz', '#milq-quiz', '#nato-quiz'].map(s => $(s));
 document.addEventListener('keydown', e => {
   if (e.target.matches('input, select, textarea')) return; // a beírós kvíz inputja saját Enter-kezelővel bír
   quizContainers.forEach(c => { if (!c.hidden && c._keys) c._keys(e); });
@@ -569,53 +571,6 @@ document.addEventListener('keydown', e => {
     else if (e.key === 'f' || e.key === 'F') answer(false);
     else if (e.key === 'h' || e.key === 'H') speak(drill.cards[drill.i].speak);
   }
-});
-
-function wordReview(w) { return `<b>${esc(w.w)}</b> — ${esc(w.hu)} <i>(${w.syn.slice(0, 3).map(esc).join(', ')})</i>`; }
-function wordFeedback(w) {
-  return `<span class="lbl">${esc(w.w)} ${esc(w.ipa)}</span>${esc(w.hu)} — ${esc(w.en)}<span class="lbl">Szinonimák</span>${w.syn.map(esc).join(', ')}${w.ant && w.ant.length ? `<span class="lbl">Ellentét</span>${w.ant.map(esc).join(', ')}` : ''}<span class="lbl">Példa</span><i>${esc(w.ex)}</i>`;
-}
-
-// ============================================================
-// SZINONIMA KVÍZ
-// ============================================================
-$('#syn-start').addEventListener('click', () => {
-  const mode = $('#syn-mode').value, tag = $('#syn-tag').value, n = +$('#syn-n').value;
-  let pool = WORDS.filter(w => tag === 'all' || w.tag === tag);
-  if (mode === 'ant') pool = pool.filter(w => w.ant && w.ant.length);
-  const allSyn = Array.from(new Set(WORDS.flatMap(w => w.syn)));
-  const allAnt = Array.from(new Set(WORDS.flatMap(w => w.ant || [])));
-  const qs = shuffle(pool).slice(0, n).map(w => {
-    const base = { key: w.w, store: 'words', quizName: 'syn', feedback: wordFeedback(w), review: wordReview(w) };
-    if (mode === 'w2s') {
-      const correct = sample(w.syn, 1)[0];
-      const excl = new Set([...w.syn, w.w]);
-      const opts = shuffle([correct, ...sample(allSyn, 3, excl)]);
-      return Object.assign(base, { prompt: esc(w.w), sub: `${esc(w.pos)} · melyik a szinonimája?`, options: opts, correct: opts.indexOf(correct), speak: w.w });
-    }
-    if (mode === 'ant') {
-      const correct = sample(w.ant, 1)[0];
-      const excl = new Set([...w.ant, ...w.syn, w.w]);
-      const opts = shuffle([correct, ...sample(allSyn.concat(allAnt), 3, excl)]);
-      return Object.assign(base, { prompt: esc(w.w), sub: `${esc(w.pos)} · melyik az ELLENTÉTE?`, options: opts, correct: opts.indexOf(correct), speak: w.w });
-    }
-    if (mode === 's2w') {
-      const s = sample(w.syn, 1)[0];
-      const others = sample(WORDS.filter(x => x !== w && x.pos === w.pos && !x.syn.includes(s)), 3).map(x => x.w);
-      const opts = shuffle([w.w, ...others]);
-      return Object.assign(base, { prompt: esc(s), sub: 'melyik C2 szó szinonimája?', options: opts, correct: opts.indexOf(w.w) });
-    }
-    if (mode === 'd2w') {
-      const others = sample(WORDS.filter(x => x !== w && x.pos === w.pos), 3).map(x => x.w);
-      const opts = shuffle([w.w, ...others]);
-      return Object.assign(base, { prompt: esc(w.en), sub: `${esc(w.pos)} · melyik szó?`, options: opts, correct: opts.indexOf(w.w) });
-    }
-    // type
-    return Object.assign(base, { type: 'type', prompt: esc(w.hu), sub: `${esc(w.pos)} · kezdőbetű: <b>${w.w[0]}</b> · ${w.w.length} betű · szinonima: ${esc(w.syn[0])}`, accept: [w.w] });
-  });
-  if (!qs.length) { toast('Nincs elég szó'); return; }
-  $('#syn-setup').hidden = true;
-  runQuiz($('#syn-quiz'), $('#syn-result'), qs, { onClose: () => { $('#syn-setup').hidden = false; } });
 });
 
 // ============================================================
@@ -737,7 +692,7 @@ function renderStats() {
   const totalRev = Object.values(S.log).reduce((a, l) => a + l[0], 0);
   $('#stat-tiles').innerHTML = tile('C2 szavak', cw, WORDS.length) + tile('Frázisok', cp, PHRASES.length) + tile('Katonai', cm, MIL.length) +
     `<div class="tile"><div class="t-title">Sorozat</div><div class="t-val">${streak()} nap</div><div class="t-sub">${totalRev} ismétlés összesen</div></div>`;
-  const names = { syn: 'Szinonima kvíz', cloze: 'Hiányos mondat', meaning: 'Frázis jelentés', milq: 'Katonai kvíz', nato: 'NATO-ábécé' };
+  const names = { cloze: 'Hiányos mondat', meaning: 'Frázis jelentés', milq: 'Katonai kvíz', nato: 'NATO-ábécé' };
   $('#stat-quiz').innerHTML = `<table class="acc"><tr><th>Kvíz</th><th>Kérdés</th><th>Helyes</th><th>Pontosság</th></tr>` +
     Object.keys(names).map(k => { const q = S.quiz[k]; return `<tr><td>${names[k]}</td><td>${q[0]}</td><td>${q[1]}</td><td>${q[0] ? Math.round(q[1] / q[0] * 100) + '%' : '—'}</td></tr>`; }).join('') + '</table>';
   drawChart();
