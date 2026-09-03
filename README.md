@@ -6,7 +6,7 @@ Offline tanulóoldal a NATO STANAG 6001 SLP 2222 (Level 2 / Functional) katonai 
 
 ## Modulok
 
-- **Szavak** — 275 szó, kizárólag a szóbeli vizsga hivatalos 14 témakörében (Family, Jobs, Education, Housing, Leisure and entertainment, Shopping, Health, Sport, Holidays and celebrations, Travelling, Public transport, Food and meals, Society, Environment), szigorúan B2/STANAG-2 (Functional) szinten. Minden szónál: IPA, angol definíció, magyar jelentés, 3–5 szinonima, ellentét, **angol példamondat + magyar fordítása**, kollokációk. Keresés + témakör szerinti szűrés.
+- **Szavak** — 571 szó, kizárólag a szóbeli vizsga hivatalos 14 témakörében (témánként ~37–44 szó, minden alpontra lefedve) (Family, Jobs, Education, Housing, Leisure and entertainment, Shopping, Health, Sport, Holidays and celebrations, Travelling, Public transport, Food and meals, Society, Environment), szigorúan B2/STANAG-2 (Functional) szinten. Minden szónál: IPA, angol definíció, magyar jelentés, 3–5 szinonima, ellentét, **angol példamondat + magyar fordítása**, kollokációk. Keresés + témakör szerinti szűrés.
 - **Kártyák** — Leitner-rendszerű ismétlés mindhárom forrásra (szavak / frázisok / katonai — külön-külön vagy "Minden forrás" összevonva), EN→HU vagy HU→EN irányban. Helyes válasz: 1 → 3 → 7 → 14 → 30 nap múlva jön újra; hibás: vissza az elejére.
 - **Szinonima kvíz** — 5 feladattípus: szó→szinonima, szinonima→szó, definíció→szó, magyar→beírás, szó→ellentét. Témakör szerint szűrhető.
 - **Frázisok** — 147 idióma, kollokáció, kötőelem, phrasal verb, latin/francia kifejezés, közmondás — mind B2/STANAG-2 szinten, angol példamondattal + magyar fordítással. Böngészés + **Hiányos mondat** (a kulcsszó kitakarva) + **Jelentés-kvíz**.
