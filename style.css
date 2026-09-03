@@ -155,9 +155,6 @@ button.big { padding: .85rem 1.4rem; font-size: 1.02rem; }
   padding: .32rem .8rem; font-size: .85rem; cursor: pointer; font-weight: 600; font-family: var(--font-sans);
 }
 .chip.active { background: var(--accent); color: #fff; border-color: var(--accent); }
-.chips.segmented { background: var(--panel-2); border-radius: 8px; padding: 3px; gap: 2px; flex-shrink: 0; }
-.chips.segmented .chip { border: none; background: transparent; border-radius: 6px; padding: .5rem .85rem; }
-.chips.segmented .chip.active { background: var(--panel); color: var(--text); box-shadow: var(--shadow); }
 .tag {
   display: inline-block; background: var(--panel-2); color: var(--muted); border-radius: 999px;
   padding: .12rem .6rem; font-size: .76rem; font-weight: 600;
@@ -165,10 +162,6 @@ button.big { padding: .85rem 1.4rem; font-size: 1.02rem; }
 .tag.syn { background: var(--accent-soft); color: var(--accent-soft-text); cursor: pointer; font-size: .87rem; padding: .22rem .7rem; }
 .tag.ant { background: var(--danger-soft); color: var(--danger); font-size: .87rem; padding: .22rem .7rem; }
 .tag.col { background: var(--warn-soft); color: var(--warn); font-size: .87rem; padding: .22rem .7rem; }
-.tag.lvl { font-size: .68rem; letter-spacing: .04em; border: 1px solid var(--border-strong); background: transparent; font-weight: 700; }
-.tag.lvl-B2 { color: #2f7d4f; border-color: #2f7d4f; }
-.tag.lvl-C1 { color: var(--warn); border-color: var(--warn); }
-.tag.lvl-C2 { color: var(--accent); border-color: var(--accent); }
 .badge { display: inline-block; border-radius: 5px; padding: .12rem .55rem; font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
 .badge.new { background: var(--panel-2); color: var(--muted); }
 .badge.learning { background: var(--warn-soft); color: var(--warn); }
@@ -189,6 +182,7 @@ button.big { padding: .85rem 1.4rem; font-size: 1.02rem; }
 .entry-body { margin-top: .7rem; padding-top: .7rem; border-top: 1px dashed var(--border-strong); font-size: .95rem; }
 .lbl { color: var(--muted); font-size: .72rem; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; margin-top: .55rem; display: block; }
 .entry-body .ex { font-style: italic; }
+.ex-hu { color: var(--muted); font-size: .88rem; margin-top: .2rem; }
 .entry-actions { display: flex; gap: .45rem; margin-top: .8rem; flex-wrap: wrap; align-items: center; }
 .entry-actions .badge { margin-left: auto; }
 .entry .speak { border: none; background: transparent; padding: 2px; color: var(--accent); }
@@ -273,6 +267,21 @@ button.big { padding: .85rem 1.4rem; font-size: 1.02rem; }
 .nato-cell b { font-family: var(--font-serif); font-size: 1.1rem; color: var(--accent); width: 1.2ch; }
 .nato-spell { font-family: var(--font-serif); font-size: 2.2rem; letter-spacing: .3em; font-weight: 600; text-align: center; margin: .5rem 0; }
 .nato-answer { text-align: center; font-size: 1.2rem; color: var(--accent); font-weight: 600; }
+
+/* ---------- Válságövezetek ---------- */
+.crisis-entry { display: flex; flex-direction: column; gap: 0; }
+.crisis-head { cursor: pointer; }
+.crisis-title { font-family: var(--font-serif); font-size: 1.2rem; font-weight: 600; }
+.crisis-asof { font-size: .74rem; color: var(--muted); }
+.crisis-qa { margin-top: .5rem; padding-top: .6rem; border-top: 1px dashed var(--border-strong); }
+.crisis-q { font-weight: 600; margin-top: .9rem; font-size: .95rem; }
+.crisis-q:first-child { margin-top: 0; }
+.crisis-a { margin-top: .3rem; line-height: 1.5; }
+.crisis-a-hu { color: var(--muted); font-size: .88rem; margin-top: .2rem; }
+.crisis-a.hidden-answer { filter: blur(5px); user-select: none; cursor: pointer; background: var(--panel-2); border-radius: 6px; padding: .3rem .5rem; margin-left: -0.5rem; }
+.crisis-a.hidden-answer + .crisis-a-hu { display: none; }
+.crisis-vocab { margin-top: .9rem; }
+.crisis-sources { margin-top: .8rem; font-size: .76rem; color: var(--muted); }
 
 /* ---------- Stats ---------- */
 .stat-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: .8rem; }

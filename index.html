@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>C2 Angol — szókincs, szinonimák, frázisok, katonai angol</title>
+<title>STANAG 2222 Angol — szókincs, frázisok, katonai angol, válságövezetek</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,500;0,6..72,600;1,6..72,500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
@@ -14,10 +14,10 @@
 <div class="shell">
   <aside class="sidebar">
     <div class="brand">
-      <span class="logo">C2</span>
+      <span class="logo">S2</span>
       <div>
-        <h1>C2 Angol</h1>
-        <p class="sub">szókincs · frázisok · katonai</p>
+        <h1>STANAG 2222</h1>
+        <p class="sub">Functional szint · szókincs · katonai</p>
       </div>
     </div>
 
@@ -45,6 +45,10 @@
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"></path></svg>
         <span class="nav-label">Katonai</span>
         <span class="nav-count" id="nav-count-mil"></span>
+      </button>
+      <button class="tab" data-tab="crisis">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 2a15 15 0 0 1 0 20 15 15 0 0 1 0-20z"></path><path d="M3 12h18"></path></svg>
+        <span class="nav-label">Válságövezetek</span>
       </button>
       <button class="tab" data-tab="stats">
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10"></path><path d="M10 20V4"></path><path d="M16 20v-7"></path><path d="M22 20H2"></path></svg>
@@ -82,12 +86,6 @@
         <div class="search-wrap">
           <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
           <input type="search" id="words-search" placeholder="Keresés szóra, jelentésre, szinonimára…">
-        </div>
-        <div class="chips segmented" id="words-lvl">
-          <button class="chip active" data-lvl="all">Mind</button>
-          <button class="chip" data-lvl="B2">B2</button>
-          <button class="chip" data-lvl="C1">C1</button>
-          <button class="chip" data-lvl="C2">C2</button>
         </div>
         <select id="words-status">
           <option value="all">Minden szó</option>
@@ -143,14 +141,6 @@
             <option value="new">Csak új</option>
             <option value="weak">Gyenge (0–1. doboz)</option>
             <option value="all">Minden, véletlen sorrendben</option>
-          </select>
-        </label>
-        <label>Szint (szavak, frázisok)
-          <select id="cards-lvl">
-            <option value="all">Minden szint</option>
-            <option value="B2">B2</option>
-            <option value="C1">C1</option>
-            <option value="C2">C2</option>
           </select>
         </label>
         <label>Irány
@@ -218,14 +208,6 @@
         <label>Témakör
           <select id="syn-tag"><option value="all">Minden</option></select>
         </label>
-        <label>Szint
-          <select id="syn-lvl">
-            <option value="all">Minden szint</option>
-            <option value="B2">B2</option>
-            <option value="C1">C1</option>
-            <option value="C2">C2</option>
-          </select>
-        </label>
         <label>Kérdések száma
           <select id="syn-n"><option>10</option><option selected>15</option><option>25</option></select>
         </label>
@@ -258,12 +240,6 @@
           <option value="phrasal">Phrasal verb</option>
           <option value="latin">Latin / francia</option>
           <option value="proverb">Közmondás</option>
-        </select>
-        <select id="phr-lvl">
-          <option value="all">Minden szint</option>
-          <option value="B2">B2</option>
-          <option value="C1">C1</option>
-          <option value="C2">C2</option>
         </select>
       </div>
       <p class="hint" id="phr-count"></p>
@@ -343,6 +319,17 @@
     </div>
   </section>
 
+  <!-- ================= VÁLSÁGÖVEZETEK ================= -->
+  <section class="tab-panel" id="panel-crisis">
+    <h2>Válságövezetek</h2>
+    <p class="hint">A szóbeli vizsga 3. feladatához (aktuális válságövezet megvitatása). Minden térséghez az 5 szokásos kérdésre egyszerű, STANAG 2 (Functional) szintű mintaválasz — tanuld meg, majd mondd el saját szavaiddal. A tények a megadott dátum szerinti állapotot tükrözik, geopolitikai helyzet gyorsan változhat.</p>
+    <div class="chips" id="crisis-mode">
+      <button class="chip active" data-mode="study">Tanulás — válaszokkal</button>
+      <button class="chip" data-mode="practice">Gyakorlás — válaszok elrejtve</button>
+    </div>
+    <div class="word-list" id="crisis-list"></div>
+  </section>
+
   <!-- ================= STATISZTIKA ================= -->
   <section class="tab-panel" id="panel-stats">
     <h2>Haladás</h2>
@@ -368,6 +355,7 @@
 <div class="toast" id="toast" hidden></div>
 
 <script src="data.js"></script>
+<script src="crisis.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

@@ -3,7 +3,7 @@
 'use strict';
 
 const D = window.C2_DATA;
-const WORDS = D.WORDS, PHRASES = D.PHRASES, MIL = D.MIL, NATO = D.NATO;
+const WORDS = D.WORDS, PHRASES = D.PHRASES, MIL = D.MIL, NATO = D.NATO, CRISIS = D.CRISIS || [];
 const KEY = 'c2angol.v1';
 const DAY = 86400000;
 const INTERVALS = [0, 1, 3, 7, 14, 30]; // nap, doboz szerint
@@ -107,6 +107,7 @@ function showTab(name) {
   $$('.tab-panel').forEach(p => p.classList.toggle('active', p.id === 'panel-' + name));
   if (name === 'words') { renderWords(); renderWordsAside(); }
   if (name === 'cards') updateCardsAvail();
+  if (name === 'crisis') renderCrisis();
   if (name === 'stats') renderStats();
   window.scrollTo(0, 0);
 }
@@ -151,12 +152,6 @@ let wordTag = 'all';
 })();
 $('#words-search').addEventListener('input', renderWords);
 $('#words-status').addEventListener('change', renderWords);
-let wordLvl = 'all';
-$('#words-lvl').addEventListener('click', e => {
-  const b = e.target.closest('.chip'); if (!b) return;
-  wordLvl = b.dataset.lvl; $$('.chip', $('#words-lvl')).forEach(x => x.classList.toggle('active', x === b)); renderWords();
-});
-const lvlBadge = l => l ? `<span class="tag lvl lvl-${l}">${l}</span>` : '';
 
 function wordMatches(w, q) {
   if (!q) return true;
@@ -166,7 +161,7 @@ function wordMatches(w, q) {
 function renderWords() {
   const q = norm($('#words-search').value);
   const fs = $('#words-status').value;
-  const list = WORDS.filter(w => (wordTag === 'all' || w.tag === wordTag) && (wordLvl === 'all' || w.lvl === wordLvl) && wordMatches(w, q)).filter(w => {
+  const list = WORDS.filter(w => (wordTag === 'all' || w.tag === wordTag) && wordMatches(w, q)).filter(w => {
     const st = stat('words', w.w);
     if (fs === 'all') return true;
     if (fs === 'due') return isDue(st);
@@ -188,7 +183,6 @@ function wordEntry(w) {
       <span class="entry-pos">${esc(w.pos)}</span>
       <span class="entry-ipa">${esc(w.ipa)}</span>
       ${speakBtn(w.w)}
-      ${lvlBadge(w.lvl)}
       <span class="entry-hu">${esc(w.hu)}</span>
     </div>
     <div class="entry-body" hidden>
@@ -197,6 +191,7 @@ function wordEntry(w) {
           <div>${esc(w.en)}</div>
           <span class="lbl">Példa</span>
           <div class="ex">${esc(w.ex)} ${speakBtn(w.ex)}</div>
+          ${w.ex_hu ? `<div class="ex-hu">${esc(w.ex_hu)}</div>` : ''}
         </div>
         <div>
           <span class="lbl">Szinonimák</span>
@@ -248,7 +243,7 @@ function renderWordsAside() {
 }
 $('#due-start').addEventListener('click', () => {
   showTab('cards');
-  $('#cards-source').value = 'all'; $('#cards-pick').value = 'due'; $('#cards-lvl').value = 'all';
+  $('#cards-source').value = 'all'; $('#cards-pick').value = 'due';
   updateCardsAvail(); $('#cards-start').click();
 });
 $$('.quick-row').forEach(b => b.addEventListener('click', () => {
@@ -265,10 +260,9 @@ const TYPE_HU = { idiom: 'idióma', collocation: 'kollokáció', expression: 'ki
 const REG_HU = { formal: 'formális', informal: 'informális', neutral: 'semleges' };
 $('#phr-search').addEventListener('input', renderPhrases);
 $('#phr-type').addEventListener('change', renderPhrases);
-$('#phr-lvl').addEventListener('change', renderPhrases);
 function renderPhrases() {
-  const q = norm($('#phr-search').value), t = $('#phr-type').value, lv = $('#phr-lvl').value;
-  const list = PHRASES.filter(p => (t === 'all' || p.type === t) && (lv === 'all' || p.lvl === lv) && (!q || norm(p.p).includes(q) || norm(p.hu).includes(q) || norm(p.en).includes(q)));
+  const q = norm($('#phr-search').value), t = $('#phr-type').value;
+  const list = PHRASES.filter(p => (t === 'all' || p.type === t) && (!q || norm(p.p).includes(q) || norm(p.hu).includes(q) || norm(p.en).includes(q)));
   $('#phr-count').textContent = `${list.length} frázis`;
   $('#phr-list').innerHTML = list.map(p => {
     const st = stat('phrases', p.p);
@@ -276,13 +270,13 @@ function renderPhrases() {
       <div class="entry-head">
         <span class="entry-word">${esc(p.p)}</span>
         ${speakBtn(p.p)}
-        ${lvlBadge(p.lvl)}
         <span class="entry-hu">${esc(p.hu)}</span>
       </div>
       <div class="entry-body" hidden>
         <div>${esc(p.en)}</div>
         <span class="lbl">Példa</span>
         <div class="ex">${esc(p.ex)} ${speakBtn(p.ex)}</div>
+        ${p.ex_hu ? `<div class="ex-hu">${esc(p.ex_hu)}</div>` : ''}
         <div class="entry-actions">
           <button class="danger" data-grade="0">Újra</button>
           <button class="ok" data-grade="1">Tudom</button>
@@ -337,6 +331,7 @@ function renderMil() {
         <div>${esc(m.en)}</div>
         <span class="lbl">Példa</span>
         <div class="ex">${esc(m.ex)} ${speakBtn(m.ex)}</div>
+        ${m.ex_hu ? `<div class="ex-hu">${esc(m.ex_hu)}</div>` : ''}
         <div class="entry-actions">
           <button class="danger" data-grade="0">Újra</button>
           <button class="ok" data-grade="1">Tudom</button>
@@ -357,13 +352,52 @@ $('#mil-list').addEventListener('click', e => {
 renderMil();
 
 // ============================================================
+// VÁLSÁGÖVEZETEK — szóbeli vizsga 3. feladata
+// ============================================================
+let crisisMode = 'study';
+$('#crisis-mode').addEventListener('click', e => {
+  const b = e.target.closest('.chip'); if (!b) return;
+  crisisMode = b.dataset.mode; $$('.chip', $('#crisis-mode')).forEach(x => x.classList.toggle('active', x === b)); renderCrisis();
+});
+function renderCrisis() {
+  if (!CRISIS.length) { $('#crisis-list').innerHTML = '<p class="hint">Ez a modul még készül.</p>'; return; }
+  const open = new Set($$('.crisis-entry', $('#crisis-list')).filter(el => !$('.entry-body', el).hidden).map(el => el.dataset.id));
+  $('#crisis-list').innerHTML = CRISIS.map(c => `<div class="entry crisis-entry" data-id="${esc(c.id)}">
+    <div class="entry-head crisis-head">
+      <span class="crisis-title">${esc(c.en)}</span>
+      ${speakBtn(c.en)}
+      <span class="entry-hu">${esc(c.hu)}</span>
+    </div>
+    <div class="entry-body"${open.has(c.id) ? '' : ' hidden'}>
+      <div class="crisis-asof">Állapot: ${esc(c.asOf)}</div>
+      <div class="crisis-qa">${c.qa.map(qa => `
+        <div class="crisis-q">${esc(qa.q)}</div>
+        <div class="crisis-a${crisisMode === 'practice' ? ' hidden-answer' : ''}">${esc(qa.en)} ${speakBtn(qa.en)}</div>
+        <div class="crisis-a-hu">${esc(qa.hu)}</div>
+      `).join('')}</div>
+      <div class="crisis-vocab">
+        <span class="lbl">Kulcsszavak</span>
+        <div class="row">${c.vocab.map(v => `<span class="tag syn" data-speak="${esc(v.en)}" title="${esc(v.hu)}">${esc(v.en)}</span>`).join('')}</div>
+      </div>
+      ${c.sources && c.sources.length ? `<div class="crisis-sources">Források: ${c.sources.map(esc).join(', ')}</div>` : ''}
+    </div>
+  </div>`).join('');
+}
+$('#crisis-list').addEventListener('click', e => {
+  const hiddenA = e.target.closest('.crisis-a.hidden-answer'); if (hiddenA) { hiddenA.classList.remove('hidden-answer'); hiddenA.nextElementSibling.style.display = 'block'; return; }
+  const sp = e.target.closest('[data-speak]'); if (sp) { speak(sp.dataset.speak); return; }
+  const entry = e.target.closest('.entry'); if (!entry) return;
+  if (e.target.closest('.crisis-head')) { const b = $('.entry-body', entry); b.hidden = !b.hidden; }
+});
+
+// ============================================================
 // KÁRTYÁK (Leitner)
 // ============================================================
 // Egységes kártya-nézet a három forrásra
 function toCard(source, item) {
-  if (source === 'words') return { key: item.w, store: 'words', lvl: item.lvl, front: item.w, meta: `${item.pos} · ${item.ipa}${item.lvl ? ' · ' + item.lvl : ''}`, hu: item.hu, en: item.en, ex: item.ex, syn: item.syn, ant: item.ant, col: item.col, speak: item.w };
-  if (source === 'phrases') return { key: item.p, store: 'phrases', lvl: item.lvl, front: item.p, meta: TYPE_HU[item.type] + ' · ' + REG_HU[item.reg] + (item.lvl ? ' · ' + item.lvl : ''), hu: item.hu, en: item.en, ex: item.ex, speak: item.p };
-  return { key: item.t, store: 'mil', lvl: null, front: item.t, meta: item.cat + (item.abbr ? ' · ' + item.abbr : ''), hu: item.hu, en: item.en, ex: item.ex, speak: item.t };
+  if (source === 'words') return { key: item.w, store: 'words', front: item.w, meta: `${item.pos} · ${item.ipa}`, hu: item.hu, en: item.en, ex: item.ex, ex_hu: item.ex_hu, syn: item.syn, ant: item.ant, col: item.col, speak: item.w };
+  if (source === 'phrases') return { key: item.p, store: 'phrases', front: item.p, meta: TYPE_HU[item.type] + ' · ' + REG_HU[item.reg], hu: item.hu, en: item.en, ex: item.ex, ex_hu: item.ex_hu, speak: item.p };
+  return { key: item.t, store: 'mil', front: item.t, meta: item.cat + (item.abbr ? ' · ' + item.abbr : ''), hu: item.hu, en: item.en, ex: item.ex, ex_hu: item.ex_hu, speak: item.t };
 }
 function sourceItems(src) { return src === 'words' ? WORDS : src === 'phrases' ? PHRASES : MIL; }
 function allCards(src) {
@@ -371,8 +405,7 @@ function allCards(src) {
   return sourceItems(src).map(i => toCard(src, i));
 }
 function pickCards(src, pick) {
-  const lv = $('#cards-lvl').value;
-  const all = allCards(src).filter(c => c.lvl == null || lv === 'all' || c.lvl === lv);
+  const all = allCards(src);
   const withSt = all.map(c => ({ c, st: stat(c.store, c.key) }));
   let sel;
   if (pick === 'new') sel = withSt.filter(x => !x.st.seen);
@@ -390,7 +423,7 @@ function updateCardsAvail() {
   const n = pickCards(src, pick).length;
   $('#cards-avail').textContent = `Elérhető kártyák: ${n}`;
 }
-['#cards-source', '#cards-pick', '#cards-lvl'].forEach(s => $(s).addEventListener('change', updateCardsAvail));
+['#cards-source', '#cards-pick'].forEach(s => $(s).addEventListener('change', updateCardsAvail));
 
 const drill = { cards: [], i: 0, dir: 'en', revealed: false, ok: 0, missed: [] };
 $('#cards-start').addEventListener('click', () => {
@@ -426,7 +459,7 @@ function reveal() {
   h += `<div>${esc(c.en)}</div>`;
   if (c.syn) h += `<span class="lbl">Szinonimák</span><div class="row">${c.syn.map(s => `<span class="tag syn">${esc(s)}</span>`).join('')}</div>`;
   if (c.ant && c.ant.length) h += `<span class="lbl">Ellentét</span><div class="row">${c.ant.map(s => `<span class="tag ant">${esc(s)}</span>`).join('')}</div>`;
-  h += `<span class="lbl">Példa</span><div class="ex">${esc(c.ex)}</div>`;
+  h += `<span class="lbl">Példa</span><div class="ex">${esc(c.ex)}</div>${c.ex_hu ? `<div class="ex-hu">${esc(c.ex_hu)}</div>` : ''}`;
   if (c.col) h += `<span class="lbl">Kollokációk</span><div class="row">${c.col.map(s => `<span class="tag col">${esc(s)}</span>`).join('')}</div>`;
   $('#card-back').innerHTML = h; $('#card-back').hidden = false;
   $('#card-reveal').hidden = true; $('#card-grade').hidden = false;
@@ -547,8 +580,8 @@ function wordFeedback(w) {
 // SZINONIMA KVÍZ
 // ============================================================
 $('#syn-start').addEventListener('click', () => {
-  const mode = $('#syn-mode').value, tag = $('#syn-tag').value, n = +$('#syn-n').value, lv = $('#syn-lvl').value;
-  let pool = WORDS.filter(w => (tag === 'all' || w.tag === tag) && (lv === 'all' || w.lvl === lv));
+  const mode = $('#syn-mode').value, tag = $('#syn-tag').value, n = +$('#syn-n').value;
+  let pool = WORDS.filter(w => tag === 'all' || w.tag === tag);
   if (mode === 'ant') pool = pool.filter(w => w.ant && w.ant.length);
   const allSyn = Array.from(new Set(WORDS.flatMap(w => w.syn)));
   const allAnt = Array.from(new Set(WORDS.flatMap(w => w.ant || [])));
@@ -762,10 +795,11 @@ if (location.protocol !== 'file:') {
   btn.hidden = false;
   btn.addEventListener('click', async () => {
     try {
-      const [html, css, js, dataJs] = await Promise.all(['index.html', 'style.css', 'app.js', 'data.js'].map(f => fetch(f, { cache: 'no-store' }).then(r => { if (!r.ok) throw new Error(f); return r.text(); })));
+      const [html, css, js, dataJs, crisisJs] = await Promise.all(['index.html', 'style.css', 'app.js', 'data.js', 'crisis.js'].map(f => fetch(f, { cache: 'no-store' }).then(r => { if (!r.ok) throw new Error(f); return r.text(); })));
       const bundled = html
         .replace(/<link[^>]*href="style\.css"[^>]*>/, () => `<style>\n${css}\n</style>`)
         .replace(/<script[^>]*src="data\.js"[^>]*><\/script>/, () => `<script>\n${dataJs}\n<\/script>`)
+        .replace(/<script[^>]*src="crisis\.js"[^>]*><\/script>/, () => `<script>\n${crisisJs}\n<\/script>`)
         .replace(/<script[^>]*src="app\.js"[^>]*><\/script>/, () => `<script>\n${js}\n<\/script>`);
       const blob = new Blob([bundled], { type: 'text/html' });
       const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'c2-angol-offline.html'; a.click();
