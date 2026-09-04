@@ -3,7 +3,7 @@
 'use strict';
 
 const D = window.C2_DATA;
-const WORDS = D.WORDS, PHRASES = D.PHRASES, MIL = D.MIL, NATO = D.NATO, CRISIS = D.CRISIS || [];
+const WORDS = D.WORDS, PHRASES = D.PHRASES, MIL = D.MIL, NATO = D.NATO, CRISIS = D.CRISIS || [], WM = D.WORLD_MAP || null;
 const KEY = 'c2angol.v1';
 const DAY = 86400000;
 const INTERVALS = [0, 1, 3, 7, 14, 30]; // nap, doboz szerint
@@ -90,6 +90,7 @@ function applyTheme() {
   const dark = t === 'dark' || (t === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches);
   $('#theme-icon').innerHTML = dark ? SUN_SVG : MOON_SVG;
   $('#theme-label').textContent = dark ? 'Világos téma' : 'Sötét téma';
+  updateWorldMapTheme();
 }
 $('#btn-theme').addEventListener('click', () => {
   const dark = document.documentElement.getAttribute('data-theme') === 'dark' ||
@@ -356,11 +357,69 @@ $('#crisis-mode').addEventListener('click', e => {
   const b = e.target.closest('.chip'); if (!b) return;
   crisisMode = b.dataset.mode; $$('.chip', $('#crisis-mode')).forEach(x => x.classList.toggle('active', x === b)); renderCrisis();
 });
+
+// ---------- Térkép (megosztott alap-SVG, országonkénti kivágás) ----------
+// A forrás-útvonalaknak nincs saját fill/stroke attribútumuk, és a <use> által
+// klónozott tartalomba a class-alapú CSS nem ér el megbízhatóan minden böngészőben —
+// ezért a színt közvetlenül a #worldmap-base csoport attribútumaként állítjuk be.
+let worldMapReady = false;
+function initWorldMapDefs() {
+  if (worldMapReady || !WM) return;
+  worldMapReady = true;
+  const holder = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  holder.setAttribute('id', 'worldmap-defs');
+  holder.setAttribute('style', 'position:absolute;width:0;height:0;overflow:hidden');
+  holder.setAttribute('aria-hidden', 'true');
+  holder.innerHTML = `<defs><g id="worldmap-base" stroke-linejoin="round">${WM.svg}</g></defs>`;
+  document.body.appendChild(holder);
+  updateWorldMapTheme();
+}
+function updateWorldMapTheme() {
+  const base = document.getElementById('worldmap-base'); if (!base) return;
+  const cs = getComputedStyle(document.documentElement);
+  base.setAttribute('fill', (cs.getPropertyValue('--border-strong') || '#d9d0c2').trim());
+  base.setAttribute('stroke', (cs.getPropertyValue('--panel') || '#fffdf9').trim());
+  base.setAttribute('stroke-width', '0.6');
+}
+function cropViewBox(box) {
+  const size = Math.max(box.width, box.height);
+  const total = Math.max(size / 0.35, 70);
+  const half = total / 2;
+  return [box.cx - half, box.cy - half, total, total];
+}
+function crisisMiniMap(c) {
+  if (!WM) return '';
+  const box = WM.countries[c.mapKey]; if (!box) return '';
+  const [x, y, w, h] = cropViewBox(box);
+  const hl = WM.highlights[c.mapKey];
+  const overlay = hl ? (hl.tag === 'g' ? `<g class="crisis-map-hl">${hl.d}</g>` : `<path class="crisis-map-hl" d="${hl.d}"></path>`)
+    : (box.manual ? `<circle class="crisis-map-pin" cx="${box.cx}" cy="${box.cy}" r="3.4"></circle>` : '');
+  return `<svg class="crisis-mini-map" viewBox="${x} ${y} ${w} ${h}" preserveAspectRatio="xMidYMid meet"><use href="#worldmap-base"></use>${overlay}</svg>`;
+}
+function renderCrisisWorldMap() {
+  const svg = $('#crisis-world-map');
+  if (!WM || svg.dataset.built) return;
+  svg.dataset.built = '1';
+  const markers = CRISIS.map(c => {
+    const box = WM.countries[c.mapKey]; if (!box) return '';
+    return `<circle class="crisis-world-pin" data-id="${esc(c.id)}" cx="${box.cx}" cy="${box.cy}" r="5.5"><title>${esc(c.en)}</title></circle>`;
+  }).join('');
+  svg.innerHTML = `<use href="#worldmap-base"></use>${markers}`;
+}
+$('#crisis-world-map').addEventListener('click', e => {
+  const pin = e.target.closest('.crisis-world-pin'); if (!pin) return;
+  const entry = document.querySelector(`.crisis-entry[data-id="${pin.dataset.id}"]`); if (!entry) return;
+  $('.entry-body', entry).hidden = false;
+  entry.scrollIntoView({ behavior: 'smooth', block: 'center' });
+});
+
 function renderCrisis() {
+  initWorldMapDefs();
   if (!CRISIS.length) { $('#crisis-list').innerHTML = '<p class="hint">Ez a modul még készül.</p>'; return; }
   const open = new Set($$('.crisis-entry', $('#crisis-list')).filter(el => !$('.entry-body', el).hidden).map(el => el.dataset.id));
   $('#crisis-list').innerHTML = CRISIS.map(c => `<div class="entry crisis-entry" data-id="${esc(c.id)}">
     <div class="entry-head crisis-head">
+      ${crisisMiniMap(c)}
       <span class="crisis-title">${esc(c.en)}</span>
       ${speakBtn(c.en)}
       <span class="entry-hu">${esc(c.hu)}</span>
@@ -379,6 +438,7 @@ function renderCrisis() {
       ${c.sources && c.sources.length ? `<div class="crisis-sources">Források: ${c.sources.map(esc).join(', ')}</div>` : ''}
     </div>
   </div>`).join('');
+  renderCrisisWorldMap();
 }
 $('#crisis-list').addEventListener('click', e => {
   const hiddenA = e.target.closest('.crisis-a.hidden-answer'); if (hiddenA) { hiddenA.classList.remove('hidden-answer'); hiddenA.nextElementSibling.style.display = 'block'; return; }
@@ -750,11 +810,12 @@ if (location.protocol !== 'file:') {
   btn.hidden = false;
   btn.addEventListener('click', async () => {
     try {
-      const [html, css, js, dataJs, crisisJs] = await Promise.all(['index.html', 'style.css', 'app.js', 'data.js', 'crisis.js'].map(f => fetch(f, { cache: 'no-store' }).then(r => { if (!r.ok) throw new Error(f); return r.text(); })));
+      const [html, css, js, dataJs, crisisJs, worldJs] = await Promise.all(['index.html', 'style.css', 'app.js', 'data.js', 'crisis.js', 'worldmap.js'].map(f => fetch(f, { cache: 'no-store' }).then(r => { if (!r.ok) throw new Error(f); return r.text(); })));
       const bundled = html
         .replace(/<link[^>]*href="style\.css"[^>]*>/, () => `<style>\n${css}\n</style>`)
         .replace(/<script[^>]*src="data\.js"[^>]*><\/script>/, () => `<script>\n${dataJs}\n<\/script>`)
         .replace(/<script[^>]*src="crisis\.js"[^>]*><\/script>/, () => `<script>\n${crisisJs}\n<\/script>`)
+        .replace(/<script[^>]*src="worldmap\.js"[^>]*><\/script>/, () => `<script>\n${worldJs}\n<\/script>`)
         .replace(/<script[^>]*src="app\.js"[^>]*><\/script>/, () => `<script>\n${js}\n<\/script>`);
       const blob = new Blob([bundled], { type: 'text/html' });
       const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'c2-angol-offline.html'; a.click();

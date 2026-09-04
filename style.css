@@ -280,8 +280,19 @@ button.big { padding: .85rem 1.4rem; font-size: 1.02rem; }
 
 /* ---------- Válságövezetek ---------- */
 .crisis-entry { display: flex; flex-direction: column; gap: 0; }
-.crisis-head { cursor: pointer; }
+.crisis-head { cursor: pointer; align-items: center; }
 .crisis-title { font-family: var(--font-serif); font-size: 1.2rem; font-weight: 600; }
+.crisis-mini-map {
+  width: 56px; height: 56px; flex-shrink: 0; border-radius: 8px; background: var(--panel-2);
+  border: 1px solid var(--border); overflow: hidden;
+}
+.crisis-mini-map .crisis-map-hl { fill: var(--danger); stroke: var(--panel); stroke-width: .4; }
+.crisis-mini-map .crisis-map-pin { fill: var(--danger); stroke: var(--panel); stroke-width: .8; }
+.crisis-world-wrap { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px; margin-top: .6rem; }
+.crisis-world-map { width: 100%; height: auto; display: block; }
+.crisis-world-pin { fill: var(--danger); stroke: var(--panel); stroke-width: 1.2; cursor: pointer; }
+.crisis-world-pin:hover { fill: var(--accent); }
+.crisis-map-credit { margin-top: .5rem; font-size: .74rem; }
 .crisis-asof { font-size: .74rem; color: var(--muted); }
 .crisis-qa { margin-top: .5rem; padding-top: .6rem; border-top: 1px dashed var(--border-strong); }
 .crisis-q { font-weight: 600; margin-top: .9rem; font-size: .95rem; }
