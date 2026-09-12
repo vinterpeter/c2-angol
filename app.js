@@ -608,11 +608,13 @@ document.addEventListener('keydown', e => {
 // ============================================================
 const PHRASAL = PHRASES.filter(p => p.type === 'phrasal');
 
-function pvBatchSize() {
-  const v = ($('#pv-batch-chips .chip.active') || {}).dataset?.val || '10';
-  return v === 'all' ? PHRASAL.length : Math.min(parseInt(v), PHRASAL.length);
+function pvBatchCards() {
+  const chip = $('#pv-batch-chips .chip.active') || $('#pv-batch-chips .chip');
+  const from = parseInt(chip.dataset.from) || 0;
+  const to = chip.dataset.to === 'all' ? PHRASAL.length : parseInt(chip.dataset.to);
+  return PHRASAL.slice(from, to);
 }
-function pvUpdateCount() { $('#pv-count').textContent = pvBatchSize(); }
+function pvUpdateCount() { $('#pv-count').textContent = pvBatchCards().length; }
 pvUpdateCount();
 
 $('#pv-dir-chips').addEventListener('click', e => {
@@ -656,7 +658,7 @@ const pv = { cards: [], i: 0, dir: 'en', flipped: false, ok: 0, missed: [] };
 $('#pv-start').addEventListener('click', () => {
   const active = $('#pv-dir-chips .chip.active');
   pv.dir = active ? active.dataset.val : 'en';
-  pv.cards = shuffle(PHRASAL).slice(0, pvBatchSize());
+  pv.cards = shuffle(pvBatchCards());
   pv.i = 0; pv.ok = 0; pv.missed = [];
   $('#pv-setup').hidden = true;
   $('#pv-result').hidden = true;
