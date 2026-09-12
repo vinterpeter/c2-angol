@@ -26,7 +26,7 @@ function toast(msg) { const t = $('#toast'); t.textContent = msg; t.hidden = fal
 // ---------- Állapot ----------
 const DEFAULT = {
   words: {}, phrases: {}, mil: {},
-  quiz: { cloze: [0, 0], meaning: [0, 0], milq: [0, 0], nato: [0, 0] },
+  quiz: { milq: [0, 0], nato: [0, 0] },
   log: {},          // 'YYYY-MM-DD' -> [reviews, correct]
   settings: { theme: 'auto', speak: true }
 };
@@ -117,7 +117,7 @@ function showTab(name) {
 function dueCount(store, items, keyOf) { return items.reduce((n, i) => n + (isDue(stat(store, keyOf(i))) ? 1 : 0), 0); }
 function updateSidebar() {
   $('#nav-count-words').textContent = WORDS.length;
-  $('#nav-count-phrases').textContent = PHRASES.length;
+  $('#nav-count-phrases').textContent = PHRASES.filter(p => p.type === 'phrasal').length;
   $('#nav-count-mil').textContent = MIL.length;
   const dueW = dueCount('words', WORDS, w => w.w), dueP = dueCount('phrases', PHRASES, p => p.p), dueM = dueCount('mil', MIL, m => m.t);
   const totalDue = dueW + dueP + dueM;
@@ -247,52 +247,14 @@ $('#due-start').addEventListener('click', () => {
 });
 $$('.quick-row').forEach(b => b.addEventListener('click', () => {
   const q = b.dataset.quick;
-  if (q === 'cloze') { showTab('phrases'); $('#panel-phrases .subtab[data-sub="cloze"]').click(); $('#cloze-start').click(); }
   if (q === 'nato') { showTab('mil'); $('#panel-mil .subtab[data-sub="nato"]').click(); $('#nato-spell').click(); }
 }));
 
 // ============================================================
-// FRÁZISOK — böngészés
+// FRÁZISOK — típus és regiszter szótár (Kártyákhoz is kell)
 // ============================================================
 const TYPE_HU = { idiom: 'idióma', collocation: 'kollokáció', expression: 'kifejezés', phrasal: 'phrasal verb', latin: 'latin / francia', proverb: 'közmondás' };
 const REG_HU = { formal: 'formális', informal: 'informális', neutral: 'semleges' };
-$('#phr-search').addEventListener('input', renderPhrases);
-$('#phr-type').addEventListener('change', renderPhrases);
-function renderPhrases() {
-  const q = norm($('#phr-search').value), t = $('#phr-type').value;
-  const list = PHRASES.filter(p => (t === 'all' || p.type === t) && (!q || norm(p.p).includes(q) || norm(p.hu).includes(q) || norm(p.en).includes(q)));
-  $('#phr-count').textContent = `${list.length} frázis`;
-  $('#phr-list').innerHTML = list.map(p => {
-    const st = stat('phrases', p.p);
-    return `<div class="entry" data-p="${esc(p.p)}">
-      <div class="entry-head">
-        <span class="entry-word">${esc(p.p)}</span>
-        ${speakBtn(p.p)}
-        <span class="entry-hu">${esc(p.hu)}</span>
-      </div>
-      <div class="entry-body" hidden>
-        <div>${esc(p.en)}</div>
-        <span class="lbl">Példa</span>
-        <div class="ex">${esc(p.ex)} ${speakBtn(p.ex)}</div>
-        ${p.ex_hu ? `<div class="ex-hu">${esc(p.ex_hu)}</div>` : ''}
-        <div class="entry-actions">
-          <button class="danger" data-grade="0">Újra</button>
-          <button class="ok" data-grade="1">Tudom</button>
-          <span class="tag">${TYPE_HU[p.type]}</span><span class="tag">${REG_HU[p.reg]}</span>
-          ${badgeFor(st)}
-        </div>
-      </div>
-    </div>`;
-  }).join('');
-}
-$('#phr-list').addEventListener('click', e => {
-  const sp = e.target.closest('[data-speak]'); if (sp) { speak(sp.dataset.speak); return; }
-  const entry = e.target.closest('.entry'); if (!entry) return;
-  const g = e.target.closest('[data-grade]');
-  if (g) { grade('phrases', entry.dataset.p, g.dataset.grade === '1'); renderPhrases(); return; }
-  if (e.target.closest('.entry-head')) { const b = $('.entry-body', entry); b.hidden = !b.hidden; }
-});
-renderPhrases();
 
 // ============================================================
 // KATONAI — szószedet
@@ -620,7 +582,7 @@ function runQuiz(container, resultEl, questions, opts) {
   render();
 }
 // egyetlen globális key handler kvízekhez
-const quizContainers = ['#cloze-quiz', '#meaning-quiz', '#milq-quiz', '#nato-quiz'].map(s => $(s));
+const quizContainers = ['#milq-quiz', '#nato-quiz'].map(s => $(s));
 document.addEventListener('keydown', e => {
   if (e.target.matches('input, select, textarea')) return; // a beírós kvíz inputja saját Enter-kezelővel bír
   quizContainers.forEach(c => { if (!c.hidden && c._keys) c._keys(e); });
@@ -631,38 +593,108 @@ document.addEventListener('keydown', e => {
     else if (e.key === 'f' || e.key === 'F') answer(false);
     else if (e.key === 'h' || e.key === 'H') speak(drill.cards[drill.i].speak);
   }
+  // phrasal verb quizlet billentyűk
+  if (activeTab === 'phrases' && !$('#pv-drill').hidden) {
+    if (e.key === ' ') { e.preventDefault(); pvFlip(); }
+    else if (e.key === 'j' || e.key === 'J') pvGrade(true);
+    else if (e.key === 'f' || e.key === 'F') pvGrade(false);
+    else if ((e.key === 'h' || e.key === 'H') && pv.cards[pv.i]) speak(pv.cards[pv.i].p);
+  }
 });
 
 // ============================================================
-// FRÁZIS KVÍZEK
+// PHRASAL VERB QUIZLET MÓD
 // ============================================================
-function phraseReview(p) { return `<b>${esc(p.p)}</b> — ${esc(p.hu)}`; }
-function phraseFeedback(p) { return `<span class="lbl">${esc(p.p)}</span>${esc(p.hu)} — ${esc(p.en)}<span class="lbl">Példa</span><i>${esc(p.ex)}</i>`; }
-function clozeSentence(p) {
-  const re = new RegExp('(' + p.key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'i');
-  const m = p.ex.match(re);
-  if (!m) return null;
-  return esc(p.ex.slice(0, m.index)) + '<span class="blank">_____</span>' + esc(p.ex.slice(m.index + m[0].length));
+const PHRASAL = PHRASES.filter(p => p.type === 'phrasal');
+$('#pv-count').textContent = PHRASAL.length;
+
+$('#pv-dir-chips').addEventListener('click', e => {
+  const b = e.target.closest('.chip'); if (!b) return;
+  $$('#pv-dir-chips .chip').forEach(x => x.classList.toggle('active', x === b));
+});
+
+const pv = { cards: [], i: 0, dir: 'en', flipped: false, ok: 0, missed: [] };
+
+$('#pv-start').addEventListener('click', () => {
+  const active = $('#pv-dir-chips .chip.active');
+  pv.dir = active ? active.dataset.val : 'en';
+  pv.cards = shuffle(PHRASAL);
+  pv.i = 0; pv.ok = 0; pv.missed = [];
+  $('#pv-setup').hidden = true;
+  $('#pv-result').hidden = true;
+  $('#pv-drill').hidden = false;
+  pvShowCard();
+});
+
+$('#pv-card').addEventListener('click', pvFlip);
+$('#pv-quit').addEventListener('click', pvEnd);
+$('#pv-speak').addEventListener('click', () => { if (pv.cards[pv.i]) speak(pv.cards[pv.i].p); });
+$('#pv-ok').addEventListener('click', () => pvGrade(true));
+$('#pv-fail').addEventListener('click', () => pvGrade(false));
+
+function pvShowCard() {
+  const p = pv.cards[pv.i];
+  pv.flipped = false;
+  $('#pv-card').classList.remove('flipped');
+  $('#pv-actions').hidden = true;
+  const prog = `${pv.i + 1} / ${pv.cards.length}`;
+  $('#pv-progress').textContent = prog;
+  $('#pv-bar').style.width = (pv.i / pv.cards.length * 100) + '%';
+  // kártyaszám jelző a kártya belsejében (mind két oldalán)
+  $$('.pv-flip-hint').forEach(el => el.textContent = `${pv.i + 1} / ${pv.cards.length} · kattints a megfordításhoz`);
+  if (pv.dir === 'en') {
+    $('#pv-front-word').textContent = p.p;
+    const re = new RegExp(p.key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+    $('#pv-front-ex').textContent = p.ex.replace(re, '______');
+    $('#pv-back-hu').textContent = p.hu;
+    $('#pv-back-def').textContent = p.en;
+    $('#pv-back-ex').textContent = p.ex;
+    $('#pv-back-exhu').textContent = p.ex_hu || '';
+    if (S.settings.speak) speak(p.p);
+  } else {
+    $('#pv-front-word').textContent = p.hu;
+    $('#pv-front-ex').textContent = '';
+    $('#pv-back-hu').textContent = p.p;
+    $('#pv-back-def').textContent = p.en;
+    $('#pv-back-ex').textContent = p.ex;
+    $('#pv-back-exhu').textContent = p.ex_hu || '';
+  }
 }
-$('#cloze-start').addEventListener('click', () => {
-  const allKeys = Array.from(new Set(PHRASES.map(p => p.key)));
-  const qs = shuffle(PHRASES).slice(0, 15).map(p => {
-    const sent = clozeSentence(p);
-    const opts = shuffle([p.key, ...sample(allKeys, 3, new Set([p.key]))]);
-    return { key: p.p, store: 'phrases', quizName: 'cloze', prompt: sent || esc(p.ex), sub: `${esc(p.hu)}`, options: opts, correct: opts.indexOf(p.key), feedback: phraseFeedback(p), review: phraseReview(p) };
+
+function pvFlip() {
+  if (pv.flipped) return;
+  pv.flipped = true;
+  $('#pv-card').classList.add('flipped');
+  $('#pv-actions').hidden = false;
+  if (pv.dir === 'hu' && S.settings.speak) speak(pv.cards[pv.i].p);
+}
+
+function pvGrade(ok) {
+  if (!pv.flipped) return;
+  const p = pv.cards[pv.i];
+  grade('phrases', p.p, ok);
+  if (ok) pv.ok++; else pv.missed.push(p);
+  pv.i++;
+  if (pv.i >= pv.cards.length) pvEnd(); else pvShowCard();
+}
+
+function pvEnd() {
+  $('#pv-drill').hidden = true;
+  const n = pv.i;
+  if (!n) { $('#pv-setup').hidden = false; return; }
+  const pct = Math.round(pv.ok / n * 100);
+  $('#pv-result').innerHTML = `<div class="score">${pct}%</div><p>${pv.ok} / ${n} phrasal verb ment.</p>
+    ${pv.missed.length ? `<h3>Ismételd át</h3><ul>${pv.missed.map(p => `<li><b>${esc(p.p)}</b> — ${esc(p.hu)}</li>`).join('')}</ul>` : '<p>Hibátlan! 🎉</p>'}
+    <div class="row"><button class="primary" id="pv-again">Új kör</button>${pv.missed.length ? '<button id="pv-retry">Csak a hibásak</button>' : ''}</div>`;
+  $('#pv-result').hidden = false;
+  $('#pv-again').addEventListener('click', () => { $('#pv-result').hidden = true; $('#pv-setup').hidden = false; });
+  const r = $('#pv-retry'); if (r) r.addEventListener('click', () => {
+    Object.assign(pv, { cards: shuffle(pv.missed), i: 0, flipped: false, ok: 0, missed: [] });
+    $('#pv-result').hidden = true; $('#pv-drill').hidden = false; pvShowCard();
   });
-  $('#cloze-setup').hidden = true;
-  runQuiz($('#cloze-quiz'), $('#cloze-result'), qs, { onClose: () => { $('#cloze-setup').hidden = false; } });
-});
-$('#meaning-start').addEventListener('click', () => {
-  const qs = shuffle(PHRASES).slice(0, 15).map(p => {
-    const others = sample(PHRASES.filter(x => x !== p), 3).map(x => x.en);
-    const opts = shuffle([p.en, ...others]);
-    return { key: p.p, store: 'phrases', quizName: 'meaning', prompt: esc(p.p), sub: TYPE_HU[p.type] + ' · mit jelent?', options: opts, correct: opts.indexOf(p.en), feedback: phraseFeedback(p), review: phraseReview(p), speak: p.p };
-  });
-  $('#meaning-setup').hidden = true;
-  runQuiz($('#meaning-quiz'), $('#meaning-result'), qs, { onClose: () => { $('#meaning-setup').hidden = false; } });
-});
+}
+
+// ============================================================
 
 // ============================================================
 // KATONAI KVÍZ + NATO
@@ -752,7 +784,7 @@ function renderStats() {
   const totalRev = Object.values(S.log).reduce((a, l) => a + l[0], 0);
   $('#stat-tiles').innerHTML = tile('C2 szavak', cw, WORDS.length) + tile('Frázisok', cp, PHRASES.length) + tile('Katonai', cm, MIL.length) +
     `<div class="tile"><div class="t-title">Sorozat</div><div class="t-val">${streak()} nap</div><div class="t-sub">${totalRev} ismétlés összesen</div></div>`;
-  const names = { cloze: 'Hiányos mondat', meaning: 'Frázis jelentés', milq: 'Katonai kvíz', nato: 'NATO-ábécé' };
+  const names = { milq: 'Katonai kvíz', nato: 'NATO-ábécé' };
   $('#stat-quiz').innerHTML = `<table class="acc"><tr><th>Kvíz</th><th>Kérdés</th><th>Helyes</th><th>Pontosság</th></tr>` +
     Object.keys(names).map(k => { const q = S.quiz[k]; return `<tr><td>${names[k]}</td><td>${q[0]}</td><td>${q[1]}</td><td>${q[0] ? Math.round(q[1] / q[0] * 100) + '%' : '—'}</td></tr>`; }).join('') + '</table>';
   drawChart();

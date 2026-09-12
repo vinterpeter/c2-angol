@@ -345,4 +345,53 @@ table.acc th { color: var(--muted); font-size: .76rem; text-transform: uppercase
   .card-word { font-size: 1.6rem; }
   .entry-hu { margin-left: 0; text-align: left; width: 100%; }
   .q-prompt { font-size: 1.25rem; }
+  .pv-term { font-size: 1.5rem; }
 }
+
+/* ---- Phrasal verb Quizlet mód ---- */
+.pv-stage {
+  perspective: 1400px; margin: .8rem 0;
+  cursor: pointer; user-select: none; -webkit-user-select: none;
+}
+.pv-card {
+  width: 100%; min-height: 240px; max-height: 320px; aspect-ratio: 5/3;
+  position: relative; transform-style: preserve-3d;
+  transition: transform .45s cubic-bezier(.4,0,.2,1);
+}
+.pv-card.flipped { transform: rotateY(180deg); }
+.pv-face {
+  position: absolute; inset: 0;
+  -webkit-backface-visibility: hidden; backface-visibility: hidden;
+  display: flex; flex-direction: column; justify-content: center; align-items: center; gap: .4rem;
+  padding: 1.8rem 2rem; border-radius: 12px;
+  box-shadow: 0 4px 18px rgba(0,0,0,.12);
+}
+.pv-face.front {
+  background: var(--panel);
+  border: 2px solid #4257b2; /* Quizlet kék keret */
+}
+.pv-face.back {
+  transform: rotateY(180deg);
+  background: #4257b2; /* Quizlet kék háttér */
+  color: #fff;
+}
+:root[data-theme="light"] .pv-face.front { background: #fff; }
+@media (prefers-color-scheme: light) { .pv-face.front { background: #fff; } }
+.pv-flip-hint {
+  font-size: .68rem; text-transform: uppercase; letter-spacing: .08em;
+  color: #4257b2; opacity: .75; margin-bottom: .3rem;
+}
+.pv-face.back .pv-flip-hint { color: rgba(255,255,255,.6); }
+.pv-term { font-family: var(--font-serif); font-size: 2.1rem; font-weight: 600; text-align: center; color: var(--text); }
+.pv-face.back .pv-term { color: #fff; font-size: 1.7rem; }
+.pv-example { font-size: .84rem; font-style: italic; text-align: center; max-width: 94%; margin-top: .15rem; color: var(--muted); }
+.pv-face.back .pv-example { color: rgba(255,255,255,.8); }
+.pv-hu { font-size: 1.35rem; font-weight: 700; text-align: center; color: #fff; }
+.pv-def { font-size: .88rem; text-align: center; max-width: 94%; color: rgba(255,255,255,.9); }
+.pv-head { display: flex; align-items: center; gap: .8rem; margin-bottom: .9rem; }
+.pv-actions { display: flex; gap: .6rem; margin-top: 1rem; }
+.pv-actions button { flex: 1; }
+.pv-actions #pv-fail { background: #ff4e42; border-color: #ff4e42; color: #fff; }
+.pv-actions #pv-ok   { background: #23af71; border-color: #23af71; color: #fff; }
+.pv-speak-row { text-align: center; margin-top: .65rem; }
+.pv-counter { font-size: .78rem; color: var(--muted); text-align: center; margin-top: .4rem; }
