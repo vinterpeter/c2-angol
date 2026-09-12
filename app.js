@@ -607,11 +607,22 @@ document.addEventListener('keydown', e => {
 // PHRASAL VERB QUIZLET MÓD
 // ============================================================
 const PHRASAL = PHRASES.filter(p => p.type === 'phrasal');
-$('#pv-count').textContent = PHRASAL.length;
+
+function pvBatchSize() {
+  const v = ($('#pv-batch-chips .chip.active') || {}).dataset?.val || '10';
+  return v === 'all' ? PHRASAL.length : Math.min(parseInt(v), PHRASAL.length);
+}
+function pvUpdateCount() { $('#pv-count').textContent = pvBatchSize(); }
+pvUpdateCount();
 
 $('#pv-dir-chips').addEventListener('click', e => {
   const b = e.target.closest('.chip'); if (!b) return;
   $$('#pv-dir-chips .chip').forEach(x => x.classList.toggle('active', x === b));
+});
+$('#pv-batch-chips').addEventListener('click', e => {
+  const b = e.target.closest('.chip'); if (!b) return;
+  $$('#pv-batch-chips .chip').forEach(x => x.classList.toggle('active', x === b));
+  pvUpdateCount();
 });
 
 function renderPVList() {
@@ -645,7 +656,7 @@ const pv = { cards: [], i: 0, dir: 'en', flipped: false, ok: 0, missed: [] };
 $('#pv-start').addEventListener('click', () => {
   const active = $('#pv-dir-chips .chip.active');
   pv.dir = active ? active.dataset.val : 'en';
-  pv.cards = shuffle(PHRASAL);
+  pv.cards = shuffle(PHRASAL).slice(0, pvBatchSize());
   pv.i = 0; pv.ok = 0; pv.missed = [];
   $('#pv-setup').hidden = true;
   $('#pv-result').hidden = true;

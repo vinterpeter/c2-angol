@@ -202,11 +202,24 @@
     <div class="setup" id="pv-setup">
       <h2>Phrasal verbs</h2>
       <p class="hint">Phrasal verb-ek Quizlet-módban — kattints a kártyára a megfordításhoz, majd értékeld magad. Billentyűk: <kbd>Space</kbd> forgat · <kbd>J</kbd> tudtam · <kbd>F</kbd> nem tudtam · <kbd>H</kbd> kiejtés.</p>
-      <div class="chips segmented pv-dir-chips-wrap" id="pv-dir-chips">
-        <button class="chip active" data-val="en">Angol → magyar</button>
-        <button class="chip" data-val="hu">Magyar → angol</button>
+      <div class="setup-grid">
+        <label>Irány
+          <div class="chips segmented pv-dir-chips-wrap" id="pv-dir-chips">
+            <button class="chip active" data-val="en">Angol → magyar</button>
+            <button class="chip" data-val="hu">Magyar → angol</button>
+          </div>
+        </label>
+        <label>Köteg
+          <div class="chips segmented" id="pv-batch-chips">
+            <button class="chip active" data-val="10">10</button>
+            <button class="chip" data-val="20">20</button>
+            <button class="chip" data-val="30">30</button>
+            <button class="chip" data-val="50">50</button>
+            <button class="chip" data-val="all">Összes</button>
+          </div>
+        </label>
       </div>
-      <button class="primary big" id="pv-start">Indítás (<span id="pv-count">157</span> kártya)</button>
+      <button class="primary big" id="pv-start">Indítás (<span id="pv-count">10</span> kártya)</button>
       <div class="toolbar" style="margin-top:1.4rem">
         <div class="search-wrap">
           <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
