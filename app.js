@@ -653,13 +653,14 @@ $('#pv-list').addEventListener('click', e => {
 });
 renderPVList();
 
-const pv = { cards: [], i: 0, dir: 'en', flipped: false, ok: 0, missed: [] };
+const pv = { cards: [], i: 0, dir: 'en', flipped: false, round: 1, total: 0, learned: 0, missed: [] };
 
 $('#pv-start').addEventListener('click', () => {
   const active = $('#pv-dir-chips .chip.active');
   pv.dir = active ? active.dataset.val : 'en';
-  pv.cards = shuffle(pvBatchCards());
-  pv.i = 0; pv.ok = 0; pv.missed = [];
+  const batch = pvBatchCards();
+  pv.cards = shuffle(batch);
+  pv.i = 0; pv.round = 1; pv.total = batch.length; pv.learned = 0; pv.missed = [];
   $('#pv-setup').hidden = true;
   $('#pv-result').hidden = true;
   $('#pv-drill').hidden = false;
@@ -677,10 +678,11 @@ function pvShowCard() {
   pv.flipped = false;
   $('#pv-card').classList.remove('flipped');
   $('#pv-actions').hidden = true;
-  const prog = `${pv.i + 1} / ${pv.cards.length}`;
-  $('#pv-progress').textContent = prog;
-  $('#pv-bar').style.width = (pv.i / pv.cards.length * 100) + '%';
-  // kártyaszám jelző a kártya belsejében (mind két oldalán)
+  // globális haladás: hány megtanult az összes tömb-kártyából
+  const globalDone = pv.learned;
+  $('#pv-progress').textContent = `${globalDone} / ${pv.total} megtanult`;
+  $('#pv-bar').style.width = (globalDone / pv.total * 100) + '%';
+  $('#pv-round').textContent = pv.round > 1 ? `${pv.round}. kör` : '';
   $$('.pv-flip-hint').forEach(el => el.textContent = `${pv.i + 1} / ${pv.cards.length} · kattints a megfordításhoz`);
   if (pv.dir === 'en') {
     $('#pv-front-word').textContent = p.p;
@@ -713,25 +715,49 @@ function pvGrade(ok) {
   if (!pv.flipped) return;
   const p = pv.cards[pv.i];
   grade('phrases', p.p, ok);
-  if (ok) pv.ok++; else pv.missed.push(p);
+  if (ok) pv.learned++; else pv.missed.push(p);
   pv.i++;
-  if (pv.i >= pv.cards.length) pvEnd(); else pvShowCard();
+  if (pv.i >= pv.cards.length) pvRoundEnd(); else pvShowCard();
+}
+
+function pvRoundEnd() {
+  if (pv.missed.length === 0) {
+    // minden kártya megtanult → végleges eredmény
+    pvFinalResult();
+  } else {
+    // következő kör a hibásokkal
+    pv.round++;
+    pv.cards = shuffle(pv.missed);
+    pv.i = 0; pv.missed = [];
+    $('#pv-drill').hidden = false;
+    pvShowCard();
+  }
+}
+
+function pvFinalResult() {
+  $('#pv-drill').hidden = true;
+  if (!pv.total) { $('#pv-setup').hidden = false; return; }
+  const roundText = pv.round === 1 ? 'Első körre megtanultad mind!' : `${pv.round} kör alatt megtanultad mind!`;
+  $('#pv-result').innerHTML = `
+    <div class="score">🎉</div>
+    <p><b>${roundText}</b></p>
+    <p class="hint">${pv.total} phrasal verb · ${pv.round} kör</p>
+    <div class="row"><button class="primary" id="pv-again">Új kör</button></div>`;
+  $('#pv-result').hidden = false;
+  $('#pv-again').addEventListener('click', () => { $('#pv-result').hidden = true; $('#pv-setup').hidden = false; });
 }
 
 function pvEnd() {
+  // kilépés gomb: azonnali leállás
   $('#pv-drill').hidden = true;
-  const n = pv.i;
-  if (!n) { $('#pv-setup').hidden = false; return; }
-  const pct = Math.round(pv.ok / n * 100);
-  $('#pv-result').innerHTML = `<div class="score">${pct}%</div><p>${pv.ok} / ${n} phrasal verb ment.</p>
-    ${pv.missed.length ? `<h3>Ismételd át</h3><ul>${pv.missed.map(p => `<li><b>${esc(p.p)}</b> — ${esc(p.hu)}</li>`).join('')}</ul>` : '<p>Hibátlan! 🎉</p>'}
-    <div class="row"><button class="primary" id="pv-again">Új kör</button>${pv.missed.length ? '<button id="pv-retry">Csak a hibásak</button>' : ''}</div>`;
+  if (!pv.total) { $('#pv-setup').hidden = false; return; }
+  const done = pv.learned, rem = pv.total - done;
+  $('#pv-result').innerHTML = `
+    <div class="score">${Math.round(done / pv.total * 100)}%</div>
+    <p>${done} megtanult · ${rem} maradt</p>
+    <div class="row"><button class="primary" id="pv-again">Újrakezd</button></div>`;
   $('#pv-result').hidden = false;
   $('#pv-again').addEventListener('click', () => { $('#pv-result').hidden = true; $('#pv-setup').hidden = false; });
-  const r = $('#pv-retry'); if (r) r.addEventListener('click', () => {
-    Object.assign(pv, { cards: shuffle(pv.missed), i: 0, flipped: false, ok: 0, missed: [] });
-    $('#pv-result').hidden = true; $('#pv-drill').hidden = false; pvShowCard();
-  });
 }
 
 // ============================================================

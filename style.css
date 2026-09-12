@@ -406,3 +406,6 @@ table.acc th { color: var(--muted); font-size: .76rem; text-transform: uppercase
 .hint-details summary { font-size: .82rem; color: var(--muted); cursor: pointer; user-select: none; }
 .hint-details summary:hover { color: var(--text); }
 .hint-details[open] summary { margin-bottom: .3rem; }
+.pv-round-badge { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #4257b2; background: rgba(66,87,178,.12); padding: .15rem .5rem; border-radius: 99px; white-space: nowrap; }
+:root[data-theme="dark"] .pv-round-badge { color: var(--accent); background: rgba(66,87,178,.25); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .pv-round-badge { color: var(--accent); background: rgba(66,87,178,.25); } }
