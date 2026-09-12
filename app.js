@@ -106,7 +106,7 @@ function showTab(name) {
   activeTab = name;
   $$('#tabs .tab').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
   $$('.tab-panel').forEach(p => p.classList.toggle('active', p.id === 'panel-' + name));
-  if (name === 'words') { renderWords(); renderWordsAside(); }
+  if (name === 'words') { renderWords(); }
   if (name === 'cards') updateCardsAvail();
   if (name === 'crisis') renderCrisis();
   if (name === 'stats') renderStats();
@@ -127,14 +127,6 @@ function updateSidebar() {
   const todayN = (S.log[today()] || [0, 0])[0];
   $('#streak-sub').textContent = todayN ? `Ma ${todayN} ismétlés` : (totalDue ? `${totalDue} esedékes vár` : 'Nincs esedékes ismétlés');
 }
-$$('.subtabs').forEach(bar => {
-  const panel = bar.parentElement;
-  const prefix = panel.id === 'panel-phrases' ? 'phr-' : 'mil-';
-  $$('.subtab', bar).forEach(b => b.addEventListener('click', () => {
-    $$('.subtab', bar).forEach(x => x.classList.toggle('active', x === b));
-    $$('.sub-panel', panel).forEach(p => p.classList.toggle('active', p.id === prefix + b.dataset.sub));
-  }));
-});
 
 // ============================================================
 // SZAVAK
@@ -148,6 +140,9 @@ let wordTag = 'all';
     const b = e.target.closest('.chip'); if (!b) return;
     wordTag = b.dataset.tag; $$('.chip', c).forEach(x => x.classList.toggle('active', x === b)); renderWords();
   });
+  const sel = $('#wd-tag-select');
+  TAGS.forEach(t => { const o = document.createElement('option'); o.value = t; o.textContent = t; sel.appendChild(o); });
+  sel.addEventListener('change', wdUpdateCount);
 })();
 $('#words-search').addEventListener('input', renderWords);
 $('#words-status').addEventListener('change', renderWords);
@@ -217,39 +212,122 @@ $('#words-list').addEventListener('click', e => {
   if (e.target.closest('.entry-head')) { const b = $('.entry-body', entry); b.hidden = !b.hidden; }
 });
 
-// ---------- Szavak jobb oldali panel ----------
 function boxDistribution(store, items, keyOf) {
-  const counts = [0, 0, 0, 0, 0, 0]; // 0: új/visszaesett, 1..5: doboz
+  const counts = [0, 0, 0, 0, 0, 0];
   items.forEach(i => { const st = stat(store, keyOf(i)); counts[!st.seen || st.box === 0 ? 0 : Math.min(5, st.box)]++; });
   return counts;
 }
-function renderWordsAside() {
-  const dueW = dueCount('words', WORDS, w => w.w), dueP = dueCount('phrases', PHRASES, p => p.p), dueM = dueCount('mil', MIL, m => m.t);
-  const total = dueW + dueP + dueM;
-  $('#due-total').textContent = total;
-  const parts = [];
-  if (dueW) parts.push(`${dueW} szó`); if (dueP) parts.push(`${dueP} frázis`); if (dueM) parts.push(`${dueM} katonai kifejezés`);
-  $('#due-breakdown').textContent = parts.length ? parts.join(' · ') : 'nincs esedékes — gyakorolj újakat';
-  $('#due-start').textContent = total ? 'Ismétlés indítása' : 'Új szavak gyakorlása';
 
-  const counts = boxDistribution('words', WORDS, w => w.w);
-  const max = Math.max(1, ...counts);
-  const labels = ['új', '1', '2', '3', '4', '5'];
-  const colors = ['var(--border-strong)', 'var(--warn)', 'var(--warn)', 'var(--warn)', 'var(--accent)', 'var(--accent)'];
-  $('#box-chart').innerHTML = counts.map((c, i) => `<div class="box-col"><div class="bar" style="height:${Math.max(4, c / max * 56)}px;background:${colors[i]}"></div><span>${labels[i]}</span></div>`).join('');
-  const known = counts[4] + counts[5], learning = counts[1] + counts[2] + counts[3];
-  $('#box-legend').innerHTML = `<span>${counts[0]} új</span><span>${learning} tanulás</span><span style="color:var(--accent);font-weight:600">${known} tudom</span>`;
+// ============================================================
+// SZAVAK — QUIZLET MÓD
+// ============================================================
+function wdBatchCards() {
+  const tag = $('#wd-tag-select').value;
+  const chip = $('#wd-batch-chips .chip.active') || $('#wd-batch-chips .chip');
+  const n = chip.dataset.val;
+  const base = tag === 'all' ? WORDS : WORDS.filter(w => w.tag === tag);
+  return n === 'all' ? base : base.slice(0, parseInt(n));
 }
-$('#due-start').addEventListener('click', () => {
-  showTab('cards');
-  setChipGroup('cards-source-chips', 'all'); $('#cards-pick').value = 'due';
-  updateCardsAvail(); $('#cards-start').click();
+function wdUpdateCount() { $('#wd-count').textContent = wdBatchCards().length; }
+wdUpdateCount();
+
+$('#wd-dir-chips').addEventListener('click', e => {
+  const b = e.target.closest('.chip'); if (!b) return;
+  $$('#wd-dir-chips .chip').forEach(x => x.classList.toggle('active', x === b));
 });
-$$('.quick-row').forEach(b => b.addEventListener('click', () => {
-  const q = b.dataset.quick;
-  if (q === 'phrasal') { showTab('phrases'); $('#pv-start').click(); }
-  if (q === 'nato') { showTab('mil'); $('#panel-mil .subtab[data-sub="nato"]').click(); $('#nato-spell').click(); }
-}));
+$('#wd-batch-chips').addEventListener('click', e => {
+  const b = e.target.closest('.chip'); if (!b) return;
+  $$('#wd-batch-chips .chip').forEach(x => x.classList.toggle('active', x === b));
+  wdUpdateCount();
+});
+
+const wd = { cards: [], i: 0, dir: 'en', flipped: false, round: 1, total: 0, learned: 0, missed: [] };
+
+$('#wd-start').addEventListener('click', () => {
+  const active = $('#wd-dir-chips .chip.active');
+  wd.dir = active ? active.dataset.val : 'en';
+  const batch = wdBatchCards();
+  wd.cards = shuffle(batch); wd.i = 0; wd.round = 1; wd.total = batch.length; wd.learned = 0; wd.missed = [];
+  $('#wd-setup').hidden = true; $('#wd-result').hidden = true; $('#wd-drill').hidden = false;
+  wdShowCard();
+});
+
+$('#wd-card').addEventListener('click', wdFlip);
+$('#wd-quit').addEventListener('click', wdEnd);
+$('#wd-speak').addEventListener('click', () => { if (wd.cards[wd.i]) speak(wd.cards[wd.i].w); });
+$('#wd-ok').addEventListener('click', () => wdGrade(true));
+$('#wd-fail').addEventListener('click', () => wdGrade(false));
+
+function wdShowCard() {
+  const w = wd.cards[wd.i];
+  wd.flipped = false;
+  $('#wd-card').classList.remove('flipped');
+  $('#wd-actions').hidden = true;
+  $('#wd-progress').textContent = `${wd.learned} / ${wd.total} megtanult`;
+  $('#wd-bar').style.width = (wd.learned / wd.total * 100) + '%';
+  $('#wd-round').textContent = wd.round > 1 ? `${wd.round}. kör` : '';
+  $$('.pv-flip-hint', $('#wd-drill')).forEach(el => el.textContent = `${wd.i + 1} / ${wd.cards.length} · kattints a megfordításhoz`);
+  if (wd.dir === 'en') {
+    $('#wd-front-word').textContent = w.w;
+    $('#wd-front-ex').textContent = w.ex || '';
+    $('#wd-back-main').textContent = w.hu;
+    $('#wd-back-def').textContent = w.en;
+    $('#wd-back-ex').textContent = w.ex || '';
+    $('#wd-back-exhu').textContent = w.ex_hu || '';
+    if (S.settings.speak) speak(w.w);
+  } else {
+    $('#wd-front-word').textContent = w.hu;
+    $('#wd-front-ex').textContent = '';
+    $('#wd-back-main').textContent = w.w;
+    $('#wd-back-def').textContent = w.en;
+    $('#wd-back-ex').textContent = w.ex || '';
+    $('#wd-back-exhu').textContent = w.ex_hu || '';
+  }
+}
+
+function wdFlip() {
+  if (wd.flipped) return;
+  wd.flipped = true;
+  $('#wd-card').classList.add('flipped');
+  $('#wd-actions').hidden = false;
+  if (wd.dir === 'hu' && S.settings.speak) speak(wd.cards[wd.i].w);
+}
+
+function wdGrade(ok) {
+  if (!wd.flipped) return;
+  const w = wd.cards[wd.i];
+  grade('words', w.w, ok);
+  if (ok) wd.learned++; else wd.missed.push(w);
+  wd.i++;
+  if (wd.i >= wd.cards.length) wdRoundEnd(); else wdShowCard();
+}
+
+function wdRoundEnd() {
+  if (wd.missed.length === 0) {
+    wdFinalResult();
+  } else {
+    wd.round++; wd.cards = shuffle(wd.missed); wd.i = 0; wd.missed = [];
+    wdShowCard();
+  }
+}
+
+function wdFinalResult() {
+  $('#wd-drill').hidden = true;
+  if (!wd.total) { $('#wd-setup').hidden = false; return; }
+  const roundText = wd.round === 1 ? 'Első körre megtanultad mind!' : `${wd.round} kör alatt megtanultad mind!`;
+  $('#wd-result').innerHTML = `<div class="score">🎉</div><p><b>${roundText}</b></p><p class="hint">${wd.total} szó · ${wd.round} kör</p><div class="row"><button class="primary" id="wd-again">Új kör</button></div>`;
+  $('#wd-result').hidden = false;
+  $('#wd-again').addEventListener('click', () => { $('#wd-result').hidden = true; $('#wd-setup').hidden = false; wdUpdateCount(); });
+}
+
+function wdEnd() {
+  $('#wd-drill').hidden = true;
+  if (!wd.total) { $('#wd-setup').hidden = false; return; }
+  const done = wd.learned, rem = wd.total - done;
+  $('#wd-result').innerHTML = `<div class="score">${Math.round(done / wd.total * 100)}%</div><p>${done} megtanult · ${rem} maradt</p><div class="row"><button class="primary" id="wd-again">Újrakezd</button></div>`;
+  $('#wd-result').hidden = false;
+  $('#wd-again').addEventListener('click', () => { $('#wd-result').hidden = true; $('#wd-setup').hidden = false; wdUpdateCount(); });
+}
 
 // ============================================================
 // FRÁZISOK — típus és regiszter szótár (Kártyákhoz is kell)
@@ -271,6 +349,9 @@ let milCat = 'all';
   });
   const sel = $('#milq-cat');
   CATS.forEach(t => { const o = document.createElement('option'); o.value = t; o.textContent = t; sel.appendChild(o); });
+  const sel2 = $('#ml-cat-select');
+  CATS.forEach(t => { const o = document.createElement('option'); o.value = t; o.textContent = t; sel2.appendChild(o); });
+  sel2.addEventListener('change', mlUpdateCount);
   $('#nato-grid').innerHTML = NATO.map(([l, w]) => `<div class="nato-cell" data-speak="${w}"><b>${l}</b> ${w}</div>`).join('');
   $('#nato-grid').addEventListener('click', e => { const c = e.target.closest('[data-speak]'); if (c) speak(c.dataset.speak); });
 })();
@@ -594,12 +675,26 @@ document.addEventListener('keydown', e => {
     else if (e.key === 'f' || e.key === 'F') answer(false);
     else if (e.key === 'h' || e.key === 'H') speak(drill.cards[drill.i].speak);
   }
+  // szavak quizlet billentyűk
+  if (activeTab === 'words' && !$('#wd-drill').hidden) {
+    if (e.key === ' ') { e.preventDefault(); wdFlip(); }
+    else if (e.key === 'j' || e.key === 'J') wdGrade(true);
+    else if (e.key === 'f' || e.key === 'F') wdGrade(false);
+    else if ((e.key === 'h' || e.key === 'H') && wd.cards[wd.i]) speak(wd.cards[wd.i].w);
+  }
   // phrasal verb quizlet billentyűk
   if (activeTab === 'phrases' && !$('#pv-drill').hidden) {
     if (e.key === ' ') { e.preventDefault(); pvFlip(); }
     else if (e.key === 'j' || e.key === 'J') pvGrade(true);
     else if (e.key === 'f' || e.key === 'F') pvGrade(false);
     else if ((e.key === 'h' || e.key === 'H') && pv.cards[pv.i]) speak(pv.cards[pv.i].p);
+  }
+  // katonai quizlet billentyűk
+  if (activeTab === 'mil' && !$('#ml-drill').hidden) {
+    if (e.key === ' ') { e.preventDefault(); mlFlip(); }
+    else if (e.key === 'j' || e.key === 'J') mlGrade(true);
+    else if (e.key === 'f' || e.key === 'F') mlGrade(false);
+    else if ((e.key === 'h' || e.key === 'H') && ml.cards[ml.i]) speak(ml.cards[ml.i].t);
   }
 });
 
@@ -688,7 +783,7 @@ function pvShowCard() {
     $('#pv-front-word').textContent = p.p;
     const re = new RegExp(p.key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
     $('#pv-front-ex').textContent = p.ex.replace(re, '______');
-    $('#pv-back-hu').textContent = p.hu;
+    $('#pv-back-main').textContent = p.hu;
     $('#pv-back-def').textContent = p.en;
     $('#pv-back-ex').textContent = p.ex;
     $('#pv-back-exhu').textContent = p.ex_hu || '';
@@ -696,7 +791,7 @@ function pvShowCard() {
   } else {
     $('#pv-front-word').textContent = p.hu;
     $('#pv-front-ex').textContent = '';
-    $('#pv-back-hu').textContent = p.p;
+    $('#pv-back-main').textContent = p.p;
     $('#pv-back-def').textContent = p.en;
     $('#pv-back-ex').textContent = p.ex;
     $('#pv-back-exhu').textContent = p.ex_hu || '';
@@ -763,6 +858,117 @@ function pvEnd() {
 // ============================================================
 
 // ============================================================
+// KATONAI — QUIZLET MÓD
+// ============================================================
+function mlBatchCards() {
+  const cat = $('#ml-cat-select').value;
+  const chip = $('#ml-batch-chips .chip.active') || $('#ml-batch-chips .chip');
+  const n = chip.dataset.val;
+  const base = cat === 'all' ? MIL : MIL.filter(m => m.cat === cat);
+  return n === 'all' ? base : base.slice(0, parseInt(n));
+}
+function mlUpdateCount() { $('#ml-count').textContent = mlBatchCards().length; }
+mlUpdateCount();
+
+$('#ml-dir-chips').addEventListener('click', e => {
+  const b = e.target.closest('.chip'); if (!b) return;
+  $$('#ml-dir-chips .chip').forEach(x => x.classList.toggle('active', x === b));
+});
+$('#ml-batch-chips').addEventListener('click', e => {
+  const b = e.target.closest('.chip'); if (!b) return;
+  $$('#ml-batch-chips .chip').forEach(x => x.classList.toggle('active', x === b));
+  mlUpdateCount();
+});
+
+const ml = { cards: [], i: 0, dir: 'en', flipped: false, round: 1, total: 0, learned: 0, missed: [] };
+
+$('#ml-start').addEventListener('click', () => {
+  const active = $('#ml-dir-chips .chip.active');
+  ml.dir = active ? active.dataset.val : 'en';
+  const batch = mlBatchCards();
+  ml.cards = shuffle(batch); ml.i = 0; ml.round = 1; ml.total = batch.length; ml.learned = 0; ml.missed = [];
+  $('#ml-setup').hidden = true; $('#ml-result').hidden = true; $('#ml-drill').hidden = false;
+  mlShowCard();
+});
+
+$('#ml-card').addEventListener('click', mlFlip);
+$('#ml-quit').addEventListener('click', mlEnd);
+$('#ml-speak').addEventListener('click', () => { if (ml.cards[ml.i]) speak(ml.cards[ml.i].t); });
+$('#ml-ok').addEventListener('click', () => mlGrade(true));
+$('#ml-fail').addEventListener('click', () => mlGrade(false));
+
+function mlShowCard() {
+  const m = ml.cards[ml.i];
+  ml.flipped = false;
+  $('#ml-card').classList.remove('flipped');
+  $('#ml-actions').hidden = true;
+  $('#ml-progress').textContent = `${ml.learned} / ${ml.total} megtanult`;
+  $('#ml-bar').style.width = (ml.learned / ml.total * 100) + '%';
+  $('#ml-round').textContent = ml.round > 1 ? `${ml.round}. kör` : '';
+  $$('.pv-flip-hint', $('#ml-drill')).forEach(el => el.textContent = `${ml.i + 1} / ${ml.cards.length} · kattints a megfordításhoz`);
+  if (ml.dir === 'en') {
+    $('#ml-front-word').textContent = m.t;
+    $('#ml-front-ex').textContent = m.ex || '';
+    $('#ml-back-main').textContent = m.hu;
+    $('#ml-back-def').textContent = m.en;
+    $('#ml-back-ex').textContent = m.ex || '';
+    $('#ml-back-exhu').textContent = m.ex_hu || '';
+    if (S.settings.speak) speak(m.t);
+  } else {
+    $('#ml-front-word').textContent = m.hu;
+    $('#ml-front-ex').textContent = '';
+    $('#ml-back-main').textContent = m.t;
+    $('#ml-back-def').textContent = m.en;
+    $('#ml-back-ex').textContent = m.ex || '';
+    $('#ml-back-exhu').textContent = m.ex_hu || '';
+  }
+}
+
+function mlFlip() {
+  if (ml.flipped) return;
+  ml.flipped = true;
+  $('#ml-card').classList.add('flipped');
+  $('#ml-actions').hidden = false;
+  if (ml.dir === 'hu' && S.settings.speak) speak(ml.cards[ml.i].t);
+}
+
+function mlGrade(ok) {
+  if (!ml.flipped) return;
+  const m = ml.cards[ml.i];
+  grade('mil', m.t, ok);
+  if (ok) ml.learned++; else ml.missed.push(m);
+  ml.i++;
+  if (ml.i >= ml.cards.length) mlRoundEnd(); else mlShowCard();
+}
+
+function mlRoundEnd() {
+  if (ml.missed.length === 0) {
+    mlFinalResult();
+  } else {
+    ml.round++; ml.cards = shuffle(ml.missed); ml.i = 0; ml.missed = [];
+    mlShowCard();
+  }
+}
+
+function mlFinalResult() {
+  $('#ml-drill').hidden = true;
+  if (!ml.total) { $('#ml-setup').hidden = false; return; }
+  const roundText = ml.round === 1 ? 'Első körre megtanultad mind!' : `${ml.round} kör alatt megtanultad mind!`;
+  $('#ml-result').innerHTML = `<div class="score">🎉</div><p><b>${roundText}</b></p><p class="hint">${ml.total} kifejezés · ${ml.round} kör</p><div class="row"><button class="primary" id="ml-again">Új kör</button></div>`;
+  $('#ml-result').hidden = false;
+  $('#ml-again').addEventListener('click', () => { $('#ml-result').hidden = true; $('#ml-setup').hidden = false; mlUpdateCount(); });
+}
+
+function mlEnd() {
+  $('#ml-drill').hidden = true;
+  if (!ml.total) { $('#ml-setup').hidden = false; return; }
+  const done = ml.learned, rem = ml.total - done;
+  $('#ml-result').innerHTML = `<div class="score">${Math.round(done / ml.total * 100)}%</div><p>${done} megtanult · ${rem} maradt</p><div class="row"><button class="primary" id="ml-again">Újrakezd</button></div>`;
+  $('#ml-result').hidden = false;
+  $('#ml-again').addEventListener('click', () => { $('#ml-result').hidden = true; $('#ml-setup').hidden = false; mlUpdateCount(); });
+}
+
+// ============================================================
 // KATONAI KVÍZ + NATO
 // ============================================================
 function milReview(m) { return `<b>${esc(m.t)}</b> — ${esc(m.hu)}`; }
@@ -791,8 +997,7 @@ $('#milq-start').addEventListener('click', () => {
     const opts = shuffle([m.t, ...sample(distractPool, 3).map(x => x.t)]);
     return Object.assign(base, { prompt: esc(m.en), sub: esc(m.cat) + ' · melyik kifejezés?', options: opts, correct: opts.indexOf(m.t) });
   });
-  $('#milq-setup').hidden = true;
-  runQuiz($('#milq-quiz'), $('#milq-result'), qs, { onClose: () => { $('#milq-setup').hidden = false; } });
+  runQuiz($('#milq-quiz'), $('#milq-result'), qs, { onClose: () => {} });
 });
 
 const NATO_WORDS = ['HUNGARY', 'BRIDGE', 'CONVOY', 'RADIO', 'TARGET', 'SECTOR', 'MEDIC', 'PATROL', 'SUPPLY', 'NORTH', 'ZULU', 'ECHO', 'DELTA', 'WHISKY', 'BUDAPEST', 'FLANK', 'GRID', 'MORTAR', 'RECON', 'OSCAR'];
@@ -892,14 +1097,14 @@ $('#import-file').addEventListener('change', e => {
   const f = e.target.files[0]; if (!f) return;
   const r = new FileReader();
   r.onload = () => {
-    try { const obj = JSON.parse(r.result); if (!obj.words) throw 0; localStorage.setItem(KEY, JSON.stringify(obj)); S = load(); toast('Import kész'); renderStats(); renderWords(); renderWordsAside(); updateSidebar(); }
+    try { const obj = JSON.parse(r.result); if (!obj.words) throw 0; localStorage.setItem(KEY, JSON.stringify(obj)); S = load(); toast('Import kész'); renderStats(); renderWords(); updateSidebar(); }
     catch (err) { toast('Hibás fájl'); }
   };
   r.readAsText(f); e.target.value = '';
 });
 $('#btn-wipe').addEventListener('click', () => {
   if (!confirm('Biztosan törlöd az összes haladást?')) return;
-  localStorage.removeItem(KEY); S = load(); applyTheme(); toast('Törölve'); renderStats(); renderWords(); renderWordsAside(); updateSidebar();
+  localStorage.removeItem(KEY); S = load(); applyTheme(); toast('Törölve'); renderStats(); renderWords(); updateSidebar();
 });
 
 // ---------- Offline letöltés ----------
@@ -925,7 +1130,6 @@ if (location.protocol !== 'file:') {
 
 // ---------- Indulás ----------
 renderWords();
-renderWordsAside();
 updateSidebar();
 updateCardsAvail();
 })();

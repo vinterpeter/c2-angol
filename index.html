@@ -76,44 +76,74 @@
 
   <!-- ================= SZAVAK ================= -->
   <section class="tab-panel active" id="panel-words">
-    <div class="words-layout">
-    <div class="words-main">
-      <div class="toolbar">
+    <div class="setup" id="wd-setup">
+      <h2>Szavak</h2>
+      <details class="hint-details"><summary>Hogyan működik?</summary><p class="hint">Válassz témakört és kötegméretet, majd indítsd el. A hibázott szavak automatikusan visszakerülnek a sorba, amíg mindet jól meg nem mondtad (Quizlet Learn mód). Billentyűk: <kbd>Space</kbd> forgat · <kbd>J</kbd> tudtam · <kbd>F</kbd> nem tudtam · <kbd>H</kbd> kiejtés.</p></details>
+      <div class="setup-grid">
+        <label>Irány
+          <div class="chips segmented" id="wd-dir-chips">
+            <button class="chip active" data-val="en">Angol → magyar</button>
+            <button class="chip" data-val="hu">Magyar → angol</button>
+          </div>
+        </label>
+        <label>Témakör
+          <select id="wd-tag-select"><option value="all">Minden témakör</option></select>
+        </label>
+        <label>Köteg
+          <div class="chips segmented" id="wd-batch-chips">
+            <button class="chip active" data-val="20">20</button>
+            <button class="chip" data-val="30">30</button>
+            <button class="chip" data-val="all">Összes</button>
+          </div>
+        </label>
+      </div>
+      <button class="primary big" id="wd-start">Indítás (<span id="wd-count">20</span> kártya)</button>
+      <div class="toolbar" style="margin-top:1.4rem">
         <div class="search-wrap">
           <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
           <input type="search" id="words-search" placeholder="Keresés szóra, jelentésre, szinonimára…">
         </div>
         <select id="words-status">
           <option value="all">Minden szó</option>
-          <option value="new">Új (még nem tanult)</option>
+          <option value="new">Új</option>
           <option value="learning">Tanulás alatt</option>
           <option value="known">Tudom</option>
-          <option value="due">Esedékes ismétlés</option>
+          <option value="due">Esedékes</option>
         </select>
       </div>
       <div class="chips" id="words-tags"></div>
       <p class="hint" id="words-count"></p>
       <div class="word-list" id="words-list"></div>
     </div>
-    <aside class="words-aside">
-      <div class="due-card">
-        <span class="due-label">Ma esedékes</span>
-        <span class="due-num" id="due-total">0</span>
-        <span class="due-breakdown" id="due-breakdown">nincs esedékes ismétlés</span>
-        <button class="primary due-start" id="due-start">Ismétlés indítása</button>
+    <div id="wd-drill" hidden>
+      <div class="pv-head">
+        <span id="wd-round" class="pv-round-badge"></span>
+        <span id="wd-progress"></span>
+        <div class="bar"><div class="bar-fill" id="wd-bar"></div></div>
+        <button class="icon-btn" id="wd-quit" title="Kilépés"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12"></path><path d="M18 6L6 18"></path></svg></button>
       </div>
-      <div class="box-card">
-        <span class="box-label">Leitner-dobozok · szavak</span>
-        <div class="box-chart" id="box-chart"></div>
-        <div class="box-legend" id="box-legend"></div>
+      <div class="pv-stage">
+        <div class="pv-card" id="wd-card">
+          <div class="pv-face front">
+            <div class="flip-hint pv-flip-hint">kattints a megfordításhoz</div>
+            <div class="pv-term" id="wd-front-word"></div>
+            <div class="pv-example" id="wd-front-ex"></div>
+          </div>
+          <div class="pv-face back">
+            <div class="pv-hu" id="wd-back-main"></div>
+            <div class="pv-def" id="wd-back-def"></div>
+            <div class="pv-example" id="wd-back-ex"></div>
+            <div class="pv-example" id="wd-back-exhu"></div>
+          </div>
+        </div>
       </div>
-      <div class="quick-card">
-        <span class="quick-label">Gyors gyakorlat</span>
-        <button class="quick-row" data-quick="phrasal">Phrasal verbs · Quizlet<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"></path></svg></button>
-        <button class="quick-row" data-quick="nato">NATO-ábécé betűzés<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"></path></svg></button>
+      <div class="pv-speak-row"><button class="icon-btn speak" id="wd-speak" title="Kiejtés (H)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10v4h4l5 4V6L8 10z"></path><path d="M16 9a4 4 0 0 1 0 6"></path><path d="M18.5 6.5a8 8 0 0 1 0 11"></path></svg></button></div>
+      <div class="pv-actions" id="wd-actions" hidden>
+        <button class="danger big" id="wd-fail">Nem tudtam (F)</button>
+        <button class="ok big" id="wd-ok">Tudtam (J)</button>
       </div>
-    </aside>
     </div>
+    <div class="result" id="wd-result" hidden></div>
   </section>
 
   <!-- ================= KÁRTYÁK ================= -->
@@ -247,7 +277,7 @@
             <div class="pv-example" id="pv-front-ex"></div>
           </div>
           <div class="pv-face back">
-            <div class="pv-hu" id="pv-back-hu"></div>
+            <div class="pv-hu" id="pv-back-main"></div>
             <div class="pv-def" id="pv-back-def"></div>
             <div class="pv-example" id="pv-back-ex"></div>
             <div class="pv-example" id="pv-back-exhu"></div>
@@ -269,13 +299,29 @@
 
   <!-- ================= KATONAI ================= -->
   <section class="tab-panel" id="panel-mil">
-    <div class="subtabs">
-      <button class="subtab active" data-sub="browse">Szószedet</button>
-      <button class="subtab" data-sub="quiz">Kvíz</button>
-      <button class="subtab" data-sub="nato">NATO-ábécé</button>
-    </div>
-    <div class="sub-panel active" id="mil-browse">
-      <div class="toolbar">
+    <div class="setup" id="ml-setup">
+      <h2>Katonai szakszókincs</h2>
+      <details class="hint-details"><summary>Hogyan működik?</summary><p class="hint">Válassz kategóriát és kötegméretet, majd indítsd el. A hibázott kifejezések visszakerülnek a sorba, amíg mindet jól meg nem mondtad (Quizlet Learn mód). Billentyűk: <kbd>Space</kbd> forgat · <kbd>J</kbd> tudtam · <kbd>F</kbd> nem tudtam · <kbd>H</kbd> kiejtés.</p></details>
+      <div class="setup-grid">
+        <label>Irány
+          <div class="chips segmented" id="ml-dir-chips">
+            <button class="chip active" data-val="en">Angol → magyar</button>
+            <button class="chip" data-val="hu">Magyar → angol</button>
+          </div>
+        </label>
+        <label>Kategória
+          <select id="ml-cat-select"><option value="all">Minden kategória</option></select>
+        </label>
+        <label>Köteg
+          <div class="chips segmented" id="ml-batch-chips">
+            <button class="chip active" data-val="20">20</button>
+            <button class="chip" data-val="30">30</button>
+            <button class="chip" data-val="all">Összes</button>
+          </div>
+        </label>
+      </div>
+      <button class="primary big" id="ml-start">Indítás (<span id="ml-count">20</span> kártya)</button>
+      <div class="toolbar" style="margin-top:1.4rem">
         <div class="search-wrap">
           <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
           <input type="search" id="mil-search" placeholder="Keresés kifejezésre, magyar jelentésre, rövidítésre…">
@@ -284,11 +330,9 @@
       <div class="chips" id="mil-cats"></div>
       <p class="hint" id="mil-count"></p>
       <div class="word-list" id="mil-list"></div>
-    </div>
-    <div class="sub-panel" id="mil-quiz">
-      <div class="setup" id="milq-setup">
-        <h2>Katonai kvíz</h2>
-        <div class="setup-grid">
+      <details class="hint-details" style="margin-top:2rem">
+        <summary>Feleletválasztós kvíz</summary>
+        <div class="setup-grid" style="margin-top:.8rem">
           <label>Feladattípus
             <select id="milq-mode">
               <option value="en2hu">Angol kifejezés → magyar jelentés</option>
@@ -301,24 +345,49 @@
             <select id="milq-cat"><option value="all">Minden</option></select>
           </label>
         </div>
-        <button class="primary big" id="milq-start">Indítás (15 kérdés)</button>
-      </div>
-      <div class="quiz" id="milq-quiz" hidden></div>
-      <div class="result" id="milq-result" hidden></div>
-    </div>
-    <div class="sub-panel" id="mil-nato">
-      <h2>NATO betűző ábécé</h2>
-      <div class="nato-grid" id="nato-grid"></div>
-      <div class="setup">
-        <h3>Betűzési gyakorlat</h3>
-        <p class="hint">Betűzd ki a szót a NATO-ábécével, aztán fedd fel és értékeld magad. Vagy: betű → válaszd ki a kódszót.</p>
-        <div class="row">
+        <button class="primary big" id="milq-start">Kvíz indítása (15 kérdés)</button>
+        <div class="quiz" id="milq-quiz" hidden></div>
+        <div class="result" id="milq-result" hidden></div>
+      </details>
+      <details class="hint-details" style="margin-top:1rem">
+        <summary>NATO betűző ábécé &amp; betűzési kvíz</summary>
+        <div class="nato-grid" id="nato-grid" style="margin-top:.8rem"></div>
+        <div class="row" style="margin-top:1rem">
           <button class="primary" id="nato-spell">Szó kibetűzése</button>
           <button class="primary" id="nato-letter">Betű → kódszó kvíz</button>
         </div>
-      </div>
-      <div class="quiz" id="nato-quiz" hidden></div>
+        <div class="quiz" id="nato-quiz" hidden></div>
+      </details>
     </div>
+    <div id="ml-drill" hidden>
+      <div class="pv-head">
+        <span id="ml-round" class="pv-round-badge"></span>
+        <span id="ml-progress"></span>
+        <div class="bar"><div class="bar-fill" id="ml-bar"></div></div>
+        <button class="icon-btn" id="ml-quit" title="Kilépés"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12"></path><path d="M18 6L6 18"></path></svg></button>
+      </div>
+      <div class="pv-stage">
+        <div class="pv-card" id="ml-card">
+          <div class="pv-face front">
+            <div class="flip-hint pv-flip-hint">kattints a megfordításhoz</div>
+            <div class="pv-term" id="ml-front-word"></div>
+            <div class="pv-example" id="ml-front-ex"></div>
+          </div>
+          <div class="pv-face back">
+            <div class="pv-hu" id="ml-back-main"></div>
+            <div class="pv-def" id="ml-back-def"></div>
+            <div class="pv-example" id="ml-back-ex"></div>
+            <div class="pv-example" id="ml-back-exhu"></div>
+          </div>
+        </div>
+      </div>
+      <div class="pv-speak-row"><button class="icon-btn speak" id="ml-speak" title="Kiejtés (H)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10v4h4l5 4V6L8 10z"></path><path d="M16 9a4 4 0 0 1 0 6"></path><path d="M18.5 6.5a8 8 0 0 1 0 11"></path></svg></button></div>
+      <div class="pv-actions" id="ml-actions" hidden>
+        <button class="danger big" id="ml-fail">Nem tudtam (F)</button>
+        <button class="ok big" id="ml-ok">Tudtam (J)</button>
+      </div>
+    </div>
+    <div class="result" id="ml-result" hidden></div>
   </section>
 
   <!-- ================= VÁLSÁGÖVEZETEK ================= -->
