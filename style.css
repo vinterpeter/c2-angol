@@ -409,3 +409,11 @@ table.acc th { color: var(--muted); font-size: .76rem; text-transform: uppercase
 .pv-round-badge { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #4257b2; background: rgba(66,87,178,.12); padding: .15rem .5rem; border-radius: 99px; white-space: nowrap; }
 :root[data-theme="dark"] .pv-round-badge { color: var(--accent); background: rgba(66,87,178,.25); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .pv-round-badge { color: var(--accent); background: rgba(66,87,178,.25); } }
+.sense-row { display: flex; gap: .35rem; align-items: baseline; font-size: .85rem; margin-top: .5rem; }
+.sense-row + .sense-ex { margin-top: .15rem; }
+.sense-n { font-weight: 700; color: var(--accent); flex-shrink: 0; }
+.pv-face.back .sense-n { color: rgba(255,255,255,.7); }
+.sense-ex { font-size: .82rem; font-style: italic; margin: .1rem 0 0 1.1rem; }
+.pv-face.back .sense-ex { color: rgba(255,255,255,.75); }
+.sense-ex-hu { font-size: .78rem; color: rgba(255,255,255,.6); font-style: italic; margin: 0 0 .1rem 1.1rem; }
+.sense-hu { font-size: .82rem; color: var(--muted); margin: 0 0 .15rem 1.1rem; }

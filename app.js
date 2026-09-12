@@ -722,6 +722,19 @@ $('#pv-batch-chips').addEventListener('click', e => {
   pvUpdateCount();
 });
 
+function pvSensesBody(p) {
+  if (p.senses && p.senses.length > 1) {
+    return p.senses.map((s, i) => `
+      <div class="sense-row"><span class="sense-n">${i + 1}.</span><span>${esc(s.en)}</span></div>
+      <div class="sense-hu">${esc(s.hu)}</div>
+      <div class="ex">${esc(s.ex)} ${speakBtn(s.ex)}</div>
+      ${s.ex_hu ? `<div class="ex-hu">${esc(s.ex_hu)}</div>` : ''}`).join('');
+  }
+  return `<div>${esc(p.en)}</div>
+    <span class="lbl">Példa</span>
+    <div class="ex">${esc(p.ex)} ${speakBtn(p.ex)}</div>
+    ${p.ex_hu ? `<div class="ex-hu">${esc(p.ex_hu)}</div>` : ''}`;
+}
 function renderPVList() {
   const q = norm($('#pv-search').value);
   const list = q ? PHRASAL.filter(p => norm(p.p).includes(q) || norm(p.hu).includes(q) || norm(p.en).includes(q)) : PHRASAL;
@@ -732,12 +745,7 @@ function renderPVList() {
       ${speakBtn(p.p)}
       <span class="entry-hu">${esc(p.hu)}</span>
     </div>
-    <div class="entry-body" hidden>
-      <div>${esc(p.en)}</div>
-      <span class="lbl">Példa</span>
-      <div class="ex">${esc(p.ex)} ${speakBtn(p.ex)}</div>
-      ${p.ex_hu ? `<div class="ex-hu">${esc(p.ex_hu)}</div>` : ''}
-    </div>
+    <div class="entry-body" hidden>${pvSensesBody(p)}</div>
   </div>`).join('');
 }
 $('#pv-search').addEventListener('input', renderPVList);
@@ -779,22 +787,43 @@ function pvShowCard() {
   $('#pv-bar').style.width = (globalDone / pv.total * 100) + '%';
   $('#pv-round').textContent = pv.round > 1 ? `${pv.round}. kör` : '';
   $$('.pv-flip-hint').forEach(el => el.textContent = `${pv.i + 1} / ${pv.cards.length} · kattints a megfordításhoz`);
+  const multi = p.senses && p.senses.length > 1;
   if (pv.dir === 'en') {
     $('#pv-front-word').textContent = p.p;
     const re = new RegExp(p.key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
     $('#pv-front-ex').textContent = p.ex.replace(re, '______');
     $('#pv-back-main').textContent = p.hu;
-    $('#pv-back-def').textContent = p.en;
-    $('#pv-back-ex').textContent = p.ex;
-    $('#pv-back-exhu').textContent = p.ex_hu || '';
+    if (multi) {
+      $('#pv-back-def').innerHTML = p.senses.map((s, i) =>
+        `<div class="sense-row"><span class="sense-n">${i + 1}.</span> <b>${esc(s.hu)}</b> — ${esc(s.en)}</div>
+         <div class="pv-example sense-ex">${esc(s.ex)}</div>
+         ${s.ex_hu ? `<div class="pv-example sense-ex-hu">${esc(s.ex_hu)}</div>` : ''}`
+      ).join('');
+      $('#pv-back-ex').textContent = '';
+      $('#pv-back-exhu').textContent = '';
+    } else {
+      $('#pv-back-def').textContent = p.en;
+      $('#pv-back-ex').textContent = p.ex;
+      $('#pv-back-exhu').textContent = p.ex_hu || '';
+    }
     if (S.settings.speak) speak(p.p);
   } else {
     $('#pv-front-word').textContent = p.hu;
     $('#pv-front-ex').textContent = '';
     $('#pv-back-main').textContent = p.p;
-    $('#pv-back-def').textContent = p.en;
-    $('#pv-back-ex').textContent = p.ex;
-    $('#pv-back-exhu').textContent = p.ex_hu || '';
+    if (multi) {
+      $('#pv-back-def').innerHTML = p.senses.map((s, i) =>
+        `<div class="sense-row"><span class="sense-n">${i + 1}.</span> ${esc(s.en)}</div>
+         <div class="pv-example sense-ex">${esc(s.ex)}</div>
+         ${s.ex_hu ? `<div class="pv-example sense-ex-hu">${esc(s.ex_hu)}</div>` : ''}`
+      ).join('');
+      $('#pv-back-ex').textContent = '';
+      $('#pv-back-exhu').textContent = '';
+    } else {
+      $('#pv-back-def').textContent = p.en;
+      $('#pv-back-ex').textContent = p.ex;
+      $('#pv-back-exhu').textContent = p.ex_hu || '';
+    }
   }
 }
 
