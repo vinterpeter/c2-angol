@@ -381,6 +381,10 @@ table.acc th { color: var(--muted); font-size: .76rem; text-transform: uppercase
   font-size: .68rem; text-transform: uppercase; letter-spacing: .08em;
   color: #4257b2; opacity: .75; margin-bottom: .3rem;
 }
+[data-theme="dark"] .pv-face.front .pv-flip-hint { color: var(--accent); opacity: .9; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .pv-face.front .pv-flip-hint { color: var(--accent); opacity: .9; }
+}
 .pv-face.back .pv-flip-hint { color: rgba(255,255,255,.6); }
 .pv-term { font-family: var(--font-serif); font-size: 2.1rem; font-weight: 600; text-align: center; color: var(--text); }
 .pv-face.back .pv-term { color: #fff; font-size: 1.7rem; }
@@ -392,6 +396,9 @@ table.acc th { color: var(--muted); font-size: .76rem; text-transform: uppercase
 .pv-actions { display: flex; gap: .6rem; margin-top: 1rem; }
 .pv-actions button { flex: 1; }
 .pv-actions #pv-fail { background: #ff4e42; border-color: #ff4e42; color: #fff; }
+.pv-actions #pv-fail:hover { background: #e03530; border-color: #e03530; }
 .pv-actions #pv-ok   { background: #23af71; border-color: #23af71; color: #fff; }
+.pv-actions #pv-ok:hover { background: #1b9460; border-color: #1b9460; }
+.pv-dir-chips-wrap { margin: 1rem 0; }
 .pv-speak-row { text-align: center; margin-top: .65rem; }
 .pv-counter { font-size: .78rem; color: var(--muted); text-align: center; margin-top: .4rem; }

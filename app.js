@@ -247,6 +247,7 @@ $('#due-start').addEventListener('click', () => {
 });
 $$('.quick-row').forEach(b => b.addEventListener('click', () => {
   const q = b.dataset.quick;
+  if (q === 'phrasal') { showTab('phrases'); $('#pv-start').click(); }
   if (q === 'nato') { showTab('mil'); $('#panel-mil .subtab[data-sub="nato"]').click(); $('#nato-spell').click(); }
 }));
 
@@ -612,6 +613,32 @@ $('#pv-dir-chips').addEventListener('click', e => {
   const b = e.target.closest('.chip'); if (!b) return;
   $$('#pv-dir-chips .chip').forEach(x => x.classList.toggle('active', x === b));
 });
+
+function renderPVList() {
+  const q = norm($('#pv-search').value);
+  const list = q ? PHRASAL.filter(p => norm(p.p).includes(q) || norm(p.hu).includes(q) || norm(p.en).includes(q)) : PHRASAL;
+  $('#pv-list-count').textContent = q ? `${list.length} találat` : `${PHRASAL.length} phrasal verb`;
+  $('#pv-list').innerHTML = list.map(p => `<div class="entry" data-p="${esc(p.p)}">
+    <div class="entry-head">
+      <span class="entry-word">${esc(p.p)}</span>
+      ${speakBtn(p.p)}
+      <span class="entry-hu">${esc(p.hu)}</span>
+    </div>
+    <div class="entry-body" hidden>
+      <div>${esc(p.en)}</div>
+      <span class="lbl">Példa</span>
+      <div class="ex">${esc(p.ex)} ${speakBtn(p.ex)}</div>
+      ${p.ex_hu ? `<div class="ex-hu">${esc(p.ex_hu)}</div>` : ''}
+    </div>
+  </div>`).join('');
+}
+$('#pv-search').addEventListener('input', renderPVList);
+$('#pv-list').addEventListener('click', e => {
+  const sp = e.target.closest('[data-speak]'); if (sp) { speak(sp.dataset.speak); return; }
+  const entry = e.target.closest('.entry'); if (!entry) return;
+  if (e.target.closest('.entry-head')) { const b = $('.entry-body', entry); b.hidden = !b.hidden; }
+});
+renderPVList();
 
 const pv = { cards: [], i: 0, dir: 'en', flipped: false, ok: 0, missed: [] };
 

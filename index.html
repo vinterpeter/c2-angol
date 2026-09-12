@@ -109,6 +109,7 @@
       </div>
       <div class="quick-card">
         <span class="quick-label">Gyors gyakorlat</span>
+        <button class="quick-row" data-quick="phrasal">Phrasal verbs · Quizlet<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"></path></svg></button>
         <button class="quick-row" data-quick="nato">NATO-ábécé betűzés<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"></path></svg></button>
       </div>
     </aside>
@@ -198,49 +199,57 @@
 
   <!-- ================= FRÁZISOK ================= -->
   <section class="tab-panel" id="panel-phrases">
-    <div id="pv-setup">
-        <h2>Phrasal verbs</h2>
-        <p class="hint">Phrasal verb-ek Quizlet-módban — kattints a kártyára a megfordításhoz, majd értékeld magad. Billentyűk: <kbd>Space</kbd> forgat · <kbd>J</kbd> tudtam · <kbd>F</kbd> nem tudtam · <kbd>H</kbd> kiejtés.</p>
-        <div class="chips segmented" id="pv-dir-chips" style="margin:1rem 0">
-          <button class="chip active" data-val="en">Angol → magyar</button>
-          <button class="chip" data-val="hu">Magyar → angol</button>
-        </div>
-        <button class="primary big" id="pv-start">Indítás (<span id="pv-count">157</span> kártya)</button>
+    <div class="setup" id="pv-setup">
+      <h2>Phrasal verbs</h2>
+      <p class="hint">Phrasal verb-ek Quizlet-módban — kattints a kártyára a megfordításhoz, majd értékeld magad. Billentyűk: <kbd>Space</kbd> forgat · <kbd>J</kbd> tudtam · <kbd>F</kbd> nem tudtam · <kbd>H</kbd> kiejtés.</p>
+      <div class="chips segmented pv-dir-chips-wrap" id="pv-dir-chips">
+        <button class="chip active" data-val="en">Angol → magyar</button>
+        <button class="chip" data-val="hu">Magyar → angol</button>
       </div>
-      <div id="pv-drill" hidden>
-        <div class="pv-head">
-          <span id="pv-progress"></span>
-          <div class="bar"><div class="bar-fill" id="pv-bar"></div></div>
-          <button class="icon-btn" id="pv-quit" title="Kilépés">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12"></path><path d="M18 6L6 18"></path></svg>
-          </button>
+      <button class="primary big" id="pv-start">Indítás (<span id="pv-count">157</span> kártya)</button>
+      <div class="toolbar" style="margin-top:1.4rem">
+        <div class="search-wrap">
+          <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+          <input type="search" id="pv-search" placeholder="Keresés phrasal verbre vagy magyar jelentésre…">
         </div>
-        <div class="pv-stage">
-          <div class="pv-card" id="pv-card">
-            <div class="pv-face front">
-              <div class="pv-flip-hint">kattints a megfordításhoz</div>
-              <div class="pv-term" id="pv-front-word"></div>
-              <div class="pv-example" id="pv-front-ex"></div>
-            </div>
-            <div class="pv-face back">
-              <div class="pv-hu" id="pv-back-hu"></div>
-              <div class="pv-def" id="pv-back-def"></div>
-              <div class="pv-example" id="pv-back-ex"></div>
-              <div class="pv-example" id="pv-back-exhu"></div>
-            </div>
+      </div>
+      <p class="hint" id="pv-list-count"></p>
+      <div class="word-list" id="pv-list"></div>
+    </div>
+    <div id="pv-drill" hidden>
+      <div class="pv-head">
+        <span id="pv-progress"></span>
+        <div class="bar"><div class="bar-fill" id="pv-bar"></div></div>
+        <button class="icon-btn" id="pv-quit" title="Kilépés">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12"></path><path d="M18 6L6 18"></path></svg>
+        </button>
+      </div>
+      <div class="pv-stage">
+        <div class="pv-card" id="pv-card">
+          <div class="pv-face front">
+            <div class="pv-flip-hint">kattints a megfordításhoz</div>
+            <div class="pv-term" id="pv-front-word"></div>
+            <div class="pv-example" id="pv-front-ex"></div>
+          </div>
+          <div class="pv-face back">
+            <div class="pv-hu" id="pv-back-hu"></div>
+            <div class="pv-def" id="pv-back-def"></div>
+            <div class="pv-example" id="pv-back-ex"></div>
+            <div class="pv-example" id="pv-back-exhu"></div>
           </div>
         </div>
-        <div class="pv-speak-row">
-          <button class="icon-btn speak" id="pv-speak" title="Kiejtés (H)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10v4h4l5 4V6L8 10z"></path><path d="M16 9a4 4 0 0 1 0 6"></path><path d="M18.5 6.5a8 8 0 0 1 0 11"></path></svg>
-          </button>
-        </div>
-        <div class="pv-actions" id="pv-actions" hidden>
-          <button class="danger big" id="pv-fail">Nem tudtam (F)</button>
-          <button class="ok big" id="pv-ok">Tudtam (J)</button>
-        </div>
       </div>
-      <div class="result" id="pv-result" hidden></div>
+      <div class="pv-speak-row">
+        <button class="icon-btn speak" id="pv-speak" title="Kiejtés (H)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10v4h4l5 4V6L8 10z"></path><path d="M16 9a4 4 0 0 1 0 6"></path><path d="M18.5 6.5a8 8 0 0 1 0 11"></path></svg>
+        </button>
+      </div>
+      <div class="pv-actions" id="pv-actions" hidden>
+        <button class="danger big" id="pv-fail">Nem tudtam (F)</button>
+        <button class="ok big" id="pv-ok">Tudtam (J)</button>
+      </div>
+    </div>
+    <div class="result" id="pv-result" hidden></div>
   </section>
 
   <!-- ================= KATONAI ================= -->
@@ -277,7 +286,7 @@
             <select id="milq-cat"><option value="all">Minden</option></select>
           </label>
         </div>
-        <button class="primary" id="milq-start">Indítás (15 kérdés)</button>
+        <button class="primary big" id="milq-start">Indítás (15 kérdés)</button>
       </div>
       <div class="quiz" id="milq-quiz" hidden></div>
       <div class="result" id="milq-result" hidden></div>
@@ -323,7 +332,7 @@
     <canvas id="stat-chart" height="160"></canvas>
     <h3>Kvíz-pontosság</h3>
     <div id="stat-quiz"></div>
-    <h3>Adatok</h3>
+    <h3 style="margin-top:2rem;padding-top:1.2rem;border-top:1px solid var(--border)">Adatok</h3>
     <div class="row">
       <button id="btn-export">Export (JSON)</button>
       <button id="btn-import">Import</button>
