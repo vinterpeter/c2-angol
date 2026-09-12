@@ -402,3 +402,7 @@ table.acc th { color: var(--muted); font-size: .76rem; text-transform: uppercase
 .pv-dir-chips-wrap { margin: 1rem 0; }
 .pv-speak-row { text-align: center; margin-top: .65rem; }
 .pv-counter { font-size: .78rem; color: var(--muted); text-align: center; margin-top: .4rem; }
+.hint-details { margin: .5rem 0 .8rem; }
+.hint-details summary { font-size: .82rem; color: var(--muted); cursor: pointer; user-select: none; }
+.hint-details summary:hover { color: var(--text); }
+.hint-details[open] summary { margin-bottom: .3rem; }
