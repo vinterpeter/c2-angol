@@ -780,6 +780,8 @@ function pvShowCard() {
   const p = pv.cards[pv.i];
   pv.flipped = false;
   $('#pv-card').classList.remove('flipped');
+  const multi = p.senses && p.senses.length > 1;
+  $('#pv-card').style.minHeight = multi ? '480px' : '300px';
   $('#pv-actions').hidden = true;
   // globális haladás: hány megtanult az összes tömb-kártyából
   const globalDone = pv.learned;
@@ -787,7 +789,6 @@ function pvShowCard() {
   $('#pv-bar').style.width = (globalDone / pv.total * 100) + '%';
   $('#pv-round').textContent = pv.round > 1 ? `${pv.round}. kör` : '';
   $$('.pv-flip-hint').forEach(el => el.textContent = `${pv.i + 1} / ${pv.cards.length} · kattints a megfordításhoz`);
-  const multi = p.senses && p.senses.length > 1;
   if (pv.dir === 'en') {
     $('#pv-front-word').textContent = p.p;
     const re = new RegExp(p.key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');

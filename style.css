@@ -354,7 +354,7 @@ table.acc th { color: var(--muted); font-size: .76rem; text-transform: uppercase
   cursor: pointer; user-select: none; -webkit-user-select: none;
 }
 .pv-card {
-  width: 100%; min-height: 240px; max-height: 320px; aspect-ratio: 5/3;
+  width: 100%; min-height: 300px;
   position: relative; transform-style: preserve-3d;
   transition: transform .45s cubic-bezier(.4,0,.2,1);
 }
