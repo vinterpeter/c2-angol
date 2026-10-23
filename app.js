@@ -3,7 +3,21 @@
 'use strict';
 
 const D = window.C2_DATA;
-const WORDS = D.WORDS, PHRASES = D.PHRASES, MIL = D.MIL, NATO = D.NATO, CRISIS = D.CRISIS || [], WM = D.WORLD_MAP || null;
+const NATO = D.NATO, CRISIS = D.CRISIS || [], WM = D.WORLD_MAP || null, MH = D.MILHU || {}, TOPICS = D.TOPICS || [];
+// A szótár-tömbök az alapadatok + a felhasználó saját felvett elemei − a törölt elemek (lásd applyEdits).
+const WORDS = [], PHRASES = [], VERBS = [], MIL = [], TVOC = [], LINK = [];
+const STORES = ['words', 'phrases', 'verbs', 'linking', 'mil', 'topics'];
+const ARR = { words: WORDS, phrases: PHRASES, verbs: VERBS, linking: LINK, mil: MIL, topics: TVOC };
+const KEYF = { words: x => x.w, phrases: x => x.p, verbs: x => x.v, linking: x => x.t, mil: x => x.t, topics: x => x.t };
+function topicVocab() {
+  const seen = new Set(), out = [];
+  TOPICS.forEach(tp => tp.questions.forEach(q => (q.vocab || []).forEach(v => {
+    const k = v.en.toLowerCase(); if (seen.has(k)) return; seen.add(k);
+    out.push({ t: v.en, hu: v.hu, ex: v.ex || '', ex_hu: '', en: '', topic: tp.id, topicHu: tp.hu });
+  })));
+  return out;
+}
+const BASE = { words: D.WORDS.slice(), phrases: D.PHRASES.slice(), verbs: (D.VERBS || []).slice(), linking: (D.LINKING || []).slice(), mil: D.MIL.slice(), topics: topicVocab() };
 const KEY = 'c2angol.v1';
 const DAY = 86400000;
 const INTERVALS = [0, 1, 3, 7, 14, 30]; // nap, doboz szerint
@@ -25,7 +39,9 @@ function toast(msg) { const t = $('#toast'); t.textContent = msg; t.hidden = fal
 
 // ---------- Állapot ----------
 const DEFAULT = {
-  words: {}, phrases: {}, mil: {},
+  words: {}, phrases: {}, mil: {}, verbs: {}, linking: {}, topics: {},
+  custom: { words: [], phrases: [], verbs: [], linking: [], mil: [], topics: [] },   // saját felvett elemek
+  hidden: { words: [], phrases: [], verbs: [], linking: [], mil: [], topics: [] },   // törölt alapelemek kulcsai
   quiz: { milq: [0, 0], nato: [0, 0] },
   log: {},          // 'YYYY-MM-DD' -> [reviews, correct]
   settings: { theme: 'auto', speak: true }
@@ -35,14 +51,46 @@ function load() {
   try {
     const raw = localStorage.getItem(KEY);
     const obj = raw ? JSON.parse(raw) : {};
-    const s = Object.assign({}, DEFAULT, obj);
+    const def = JSON.parse(JSON.stringify(DEFAULT));
+    const s = Object.assign(def, obj);
     s.quiz = Object.assign({}, DEFAULT.quiz, obj.quiz || {});
     s.settings = Object.assign({}, DEFAULT.settings, obj.settings || {});
+    s.custom = Object.assign(JSON.parse(JSON.stringify(DEFAULT.custom)), obj.custom || {});
+    s.hidden = Object.assign(JSON.parse(JSON.stringify(DEFAULT.hidden)), obj.hidden || {});
+    STORES.forEach(k => { s[k] = s[k] || {}; });
     s.log = obj.log || {};
     return s;
   } catch (e) { return JSON.parse(JSON.stringify(DEFAULT)); }
 }
 function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* quota */ } }
+
+// ---------- Saját lista: felvétel, törlés ----------
+// A saját elem nyers alakja: { en, hu, def, ex, ex_hu, sec?, topic?, at }
+function guessKey(term, ex) {
+  if (!ex) return '';
+  const toks = ex.match(/[A-Za-z'-]+/g) || [];
+  for (const w of term.toLowerCase().split(/\s+/)) {
+    const stem = w.replace(/^to$/, '').slice(0, Math.max(3, w.length - 2)); if (!stem) continue;
+    const hit = toks.find(t => t.toLowerCase().startsWith(stem)); if (hit) return hit;
+  }
+  return '';
+}
+function normalizeOwn(store, c) {
+  const base = { hu: c.hu || '', en: c.def || '', ex: c.ex || '', ex_hu: c.ex_hu || '', own: true };
+  if (store === 'words') return Object.assign(base, { w: c.en, pos: '', ipa: '', syn: [], ant: [], col: [], tag: 'saját' });
+  if (store === 'phrases') return Object.assign(base, { p: c.en, type: 'phrasal', lvl: '', key: guessKey(c.en, c.ex), reg: 'neutral' });
+  if (store === 'verbs') return Object.assign(base, { v: c.en.replace(/^to\s+/i, ''), forms: '', syn: [], col: [], key: guessKey(c.en, c.ex) });
+  if (store === 'linking') return Object.assign(base, { t: c.en, fn: 'own', fnHu: 'saját' });
+  if (store === 'mil') return Object.assign(base, { t: c.en, cat: 'saját', sec: c.sec || 'szokincs', top: true });
+  return Object.assign(base, { t: c.en, topic: c.topic || 'saját', topicHu: 'saját' });
+}
+function applyEdits(store) {
+  const hid = new Set(S.hidden[store]), arr = ARR[store], kf = KEYF[store];
+  arr.length = 0;
+  BASE[store].forEach(x => { if (!hid.has(kf(x))) arr.push(x); });
+  S.custom[store].forEach(c => arr.push(normalizeOwn(store, c)));
+}
+STORES.forEach(applyEdits);
 
 function stat(store, key) { return S[store][key] || { box: 0, due: 0, seen: 0, ok: 0, fail: 0 }; }
 function status(st) {
@@ -95,7 +143,7 @@ function applyTheme() {
 $('#btn-theme').addEventListener('click', () => {
   const dark = document.documentElement.getAttribute('data-theme') === 'dark' ||
     (S.settings.theme === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches);
-  S.settings.theme = dark ? 'light' : 'dark'; save(); applyTheme(); drawChart();
+  S.settings.theme = dark ? 'light' : 'dark'; save(); applyTheme();
 });
 applyTheme();
 
@@ -109,18 +157,25 @@ function showTab(name) {
   if (name === 'words') { renderWords(); }
   if (name === 'cards') updateCardsAvail();
   if (name === 'crisis') renderCrisis();
-  if (name === 'stats') renderStats();
+  if (name === 'topics') renderTopics();
   window.scrollTo(0, 0);
 }
 
 // ---------- Oldalsáv: számlálók, sorozat ----------
+function streak() {
+  let n = 0; const d = new Date();
+  for (;;) { const k = d.toISOString().slice(0, 10); if (S.log[k] && S.log[k][0] > 0) { n++; d.setDate(d.getDate() - 1); } else break; }
+  return n;
+}
 function dueCount(store, items, keyOf) { return items.reduce((n, i) => n + (isDue(stat(store, keyOf(i))) ? 1 : 0), 0); }
 function updateSidebar() {
   $('#nav-count-words').textContent = WORDS.length;
   $('#nav-count-phrases').textContent = PHRASES.filter(p => p.type === 'phrasal').length;
   $('#nav-count-mil').textContent = MIL.length;
-  const dueW = dueCount('words', WORDS, w => w.w), dueP = dueCount('phrases', PHRASES, p => p.p), dueM = dueCount('mil', MIL, m => m.t);
-  const totalDue = dueW + dueP + dueM;
+  $('#nav-count-verbs').textContent = VERBS.length;
+  $('#nav-count-topics').textContent = TOPICS.length || '';
+  $('#nav-count-linking').textContent = LINK.length || '';
+  const totalDue = STORES.reduce((n, st) => n + dueCount(st, ARR[st], KEYF[st]), 0);
   $('#nav-count-cards').textContent = totalDue ? totalDue : '';
   const days = streak();
   $('#streak-val').textContent = days + (days === 1 ? ' nap' : ' nap');
@@ -131,26 +186,28 @@ function updateSidebar() {
 // ============================================================
 // SZAVAK
 // ============================================================
-const TAGS = Array.from(new Set(WORDS.map(w => w.tag)));
 let wordTag = 'all';
-(function initWordTags() {
-  const c = $('#words-tags');
-  c.innerHTML = ['all', ...TAGS].map(t => `<button class="chip${t === 'all' ? ' active' : ''}" data-tag="${t}">${t === 'all' ? 'mind' : esc(t)}</button>`).join('');
-  c.addEventListener('click', e => {
-    const b = e.target.closest('.chip'); if (!b) return;
-    wordTag = b.dataset.tag; $$('.chip', c).forEach(x => x.classList.toggle('active', x === b)); renderWords();
-  });
-  const sel = $('#wd-tag-select');
-  TAGS.forEach(t => { const o = document.createElement('option'); o.value = t; o.textContent = t; sel.appendChild(o); });
-  sel.addEventListener('change', wdUpdateCount);
-})();
+function buildWordTags() {
+  const tags = Array.from(new Set(WORDS.map(w => w.tag)));
+  if (wordTag !== 'all' && !tags.includes(wordTag)) wordTag = 'all';
+  $('#words-tags').innerHTML = ['all', ...tags].map(t => `<button class="chip${t === wordTag ? ' active' : ''}" data-tag="${esc(t)}">${t === 'all' ? 'mind' : esc(t)}</button>`).join('');
+  const sel = $('#wd-tag-select'), cur = sel.value;
+  sel.innerHTML = '<option value="all">Minden témakör</option>' + tags.map(t => `<option>${esc(t)}</option>`).join('');
+  sel.value = tags.includes(cur) ? cur : 'all';
+}
+$('#words-tags').addEventListener('click', e => {
+  const b = e.target.closest('.chip'); if (!b) return;
+  wordTag = b.dataset.tag; $$('.chip', $('#words-tags')).forEach(x => x.classList.toggle('active', x === b)); renderWords();
+});
+$('#wd-tag-select').addEventListener('change', () => wdUpdateCount());
+buildWordTags();
 $('#words-search').addEventListener('input', renderWords);
 $('#words-status').addEventListener('change', renderWords);
 
 function wordMatches(w, q) {
   if (!q) return true;
   return norm(w.w).includes(q) || norm(w.hu).includes(q) || norm(w.en).includes(q) ||
-    w.syn.some(s => norm(s).includes(q)) || (w.ant || []).some(s => norm(s).includes(q));
+    (w.syn || []).some(s => norm(s).includes(q)) || (w.ant || []).some(s => norm(s).includes(q));
 }
 function renderWords() {
   const q = norm($('#words-search').value);
@@ -188,11 +245,11 @@ function wordEntry(w) {
           ${w.ex_hu ? `<div class="ex-hu">${esc(w.ex_hu)}</div>` : ''}
         </div>
         <div>
-          <span class="lbl">Szinonimák</span>
-          <div class="row">${w.syn.map(s => `<span class="tag syn" data-speak="${esc(s)}">${esc(s)}</span>`).join('')}</div>
+          ${w.syn && w.syn.length ? `<span class="lbl">Szinonimák</span>
+          <div class="row">${w.syn.map(s => `<span class="tag syn" data-speak="${esc(s)}">${esc(s)}</span>`).join('')}</div>` : ''}
           ${w.ant && w.ant.length ? `<span class="lbl">Ellentét</span><div class="row">${w.ant.map(s => `<span class="tag ant">${esc(s)}</span>`).join('')}</div>` : ''}
-          <span class="lbl">Kollokációk</span>
-          <div class="row">${w.col.map(s => `<span class="tag col">${esc(s)}</span>`).join('')}</div>
+          ${w.col && w.col.length ? `<span class="lbl">Kollokációk</span>
+          <div class="row">${w.col.map(s => `<span class="tag col">${esc(s)}</span>`).join('')}</div>` : ''}
         </div>
       </div>
       <div class="entry-actions">
@@ -200,6 +257,7 @@ function wordEntry(w) {
         <button class="ok" data-grade="1">Tudom</button>
         <span class="tag">${esc(w.tag)}</span>
         ${badgeFor(st)}
+        ${delBtn()}
       </div>
     </div>
   </div>`;
@@ -208,6 +266,7 @@ $('#words-list').addEventListener('click', e => {
   const sp = e.target.closest('[data-speak]'); if (sp) { speak(sp.dataset.speak); return; }
   const g = e.target.closest('[data-grade]');
   const entry = e.target.closest('.entry'); if (!entry) return;
+  if (e.target.closest('[data-del]')) { deleteItem('words', entry.dataset.w); return; }
   if (g) { grade('words', entry.dataset.w, g.dataset.grade === '1'); toast(g.dataset.grade === '1' ? 'Feljebb léptetve' : 'Vissza az elejére'); renderWords(); return; }
   if (e.target.closest('.entry-head')) { const b = $('.entry-body', entry); b.hidden = !b.hidden; }
 });
@@ -336,29 +395,105 @@ const TYPE_HU = { idiom: 'idióma', collocation: 'kollokáció', expression: 'ki
 const REG_HU = { formal: 'formális', informal: 'informális', neutral: 'semleges' };
 
 // ============================================================
-// KATONAI — szószedet
+// KATONAI — szekciók (rendfokozatok, felépítés, haderőnemek, fegyverek, szókincs, NATO)
 // ============================================================
-const CATS = Array.from(new Set(MIL.map(m => m.cat)));
-let milCat = 'all';
-(function initMil() {
-  const c = $('#mil-cats');
-  c.innerHTML = ['all', ...CATS].map(t => `<button class="chip${t === 'all' ? ' active' : ''}" data-cat="${t}">${t === 'all' ? 'mind' : esc(t)}</button>`).join('');
-  c.addEventListener('click', e => {
-    const b = e.target.closest('.chip'); if (!b) return;
-    milCat = b.dataset.cat; $$('.chip', c).forEach(x => x.classList.toggle('active', x === b)); renderMil();
-  });
-  const sel = $('#milq-cat');
-  CATS.forEach(t => { const o = document.createElement('option'); o.value = t; o.textContent = t; sel.appendChild(o); });
-  const sel2 = $('#ml-cat-select');
-  CATS.forEach(t => { const o = document.createElement('option'); o.value = t; o.textContent = t; sel2.appendChild(o); });
-  sel2.addEventListener('change', mlUpdateCount);
-  $('#nato-grid').innerHTML = NATO.map(([l, w]) => `<div class="nato-cell" data-speak="${w}"><b>${l}</b> ${w}</div>`).join('');
-  $('#nato-grid').addEventListener('click', e => { const c = e.target.closest('[data-speak]'); if (c) speak(c.dataset.speak); });
-})();
+const MIL_SECS = { rang: 'Rendfokozatok', szerv: 'Felépítés, szervezetek', haderonem: 'Haderőnemek, fegyvernemek', fegyver: 'Gépkarabély, pisztoly', szokincs: 'Leggyakoribb kifejezések', szak: 'Szakszókincs témák szerint' };
+// egy tétel több részben is szerepelhet (secs); a „Leggyakoribb” rész a top-jelölésű tételeket mutatja
+function inSec(m, sec) { return sec === 'szokincs' ? !!(m.top || (m.own && m.sec === 'szokincs')) : (m.secs || [m.sec || 'szak']).includes(sec) || (m.own && m.sec === sec); }
+let milSec = 'rang', milCat = 'all';
+function milSecItems() {
+  return MIL.filter(m => inSec(m, milSec));
+}
+function buildMilCats() {
+  const cats = Array.from(new Set(milSecItems().map(m => m.cat)));
+  if (milCat !== 'all' && !cats.includes(milCat)) milCat = 'all';
+  $('#mil-cats').innerHTML = cats.length > 1 ? ['all', ...cats].map(t => `<button class="chip${t === milCat ? ' active' : ''}" data-cat="${esc(t)}">${t === 'all' ? 'mind' : esc(t)}</button>`).join('') : '';
+  const opts = '<option value="all">Minden kategória</option>' + cats.map(t => `<option>${esc(t)}</option>`).join('');
+  $('#ml-cat-select').innerHTML = opts; $('#milq-cat').innerHTML = opts;
+}
+$('#mil-cats').addEventListener('click', e => {
+  const b = e.target.closest('.chip'); if (!b) return;
+  milCat = b.dataset.cat; $$('.chip', $('#mil-cats')).forEach(x => x.classList.toggle('active', x === b)); renderMil();
+});
+$('#mil-sec-chips').addEventListener('click', e => { const b = e.target.closest('.chip'); if (b) setMilSec(b.dataset.sec); });
+$('#ml-cat-select').addEventListener('change', () => mlUpdateCount());
+function setMilSec(sec) {
+  milSec = sec; milCat = 'all';
+  $$('#mil-sec-chips .chip').forEach(c => c.classList.toggle('active', c.dataset.sec === sec));
+  $('#mil-nato').hidden = sec !== 'nato';
+  $('#mil-learn').hidden = sec === 'nato';
+  $('#mil-learn-title').textContent = sec === 'nato' ? '' : `Gyakorlás kártyákkal — ${MIL_SECS[sec]}`;
+  renderMilOverview();
+  if (sec !== 'nato') { buildMilCats(); renderMil(); mlUpdateCount(); }
+}
+function milRefresh() { if (milSec !== 'nato') { buildMilCats(); renderMil(); mlUpdateCount(); } }
+
+// ---------- Áttekintő nézetek ----------
+function renderMilOverview() {
+  const box = $('#mil-overview');
+  if (milSec === 'rang') box.innerHTML = ovRanks();
+  else if (milSec === 'szerv') box.innerHTML = ovOrg();
+  else if (milSec === 'haderonem') box.innerHTML = ovServices();
+  else if (milSec === 'fegyver') box.innerHTML = ovWeapons();
+  else if (milSec === 'szokincs') box.innerHTML = `<p class="hint">A szóbeli vizsgán leggyakrabban használt katonai szavak és kifejezések: szolgálat, kiképzés, műveletek, NATO-együttműködés, katasztrófavédelem, rádióforgalmazás. Mindegyikhez példamondat és fordítás tartozik.</p>`;
+  else if (milSec === 'szak') box.innerHTML = `<p class="hint">A teljes katonai szakszókincs témakörök szerint: egység, művelet, harcászat, fegyver, híradás, logisztika, vezénylés, rövidítések, parancsformátum, kiképzés, egészségügy, navigáció és a többi. Válassz témakört a chipekkel.</p>`;
+  else box.innerHTML = '';
+}
+function asOfNote() { return MH.asOf ? `<p class="ov-asof">Állapot: ${esc(MH.asOf)}. Az alakulatnevek és a vezetők változhatnak; vizsga előtt érdemes a honvedelem.hu oldalon ellenőrizni.</p>` : ''; }
+function ovRanks() {
+  if (!MH.ranks) return '';
+  return `<p class="hint">A Magyar Honvédség rendfokozatai a hivatalos angol megnevezéssel és a NATO STANAG 2116 szerinti kóddal (OR = legénység és altisztek, OF = tisztek). Kattints egy rendfokozatra a kiejtéshez. A jelzések itt a lövészek (sötétzöld) színével láthatók; a szín fegyvernemenként eltér.</p>` +
+    MH.rankGroups.map(g => `<h4 class="grp-title">${esc(g.hu)} <small>${esc(g.en)}</small></h4>
+    <div class="rank-grid">${MH.ranks.filter(r => r.grp === g.id).map(r => `<button class="rank-card" data-speak="${esc(r.t)}">
+      ${MH.insignia && MH.insignia[r.ins] ? `<img src="${MH.insignia[r.ins]}" alt="${esc(r.hu)} rendfokozati jelzés" loading="lazy">` : ''}
+      <span class="rank-hu">${esc(r.hu)}</span><span class="rank-en">${esc(r.t)}</span><span class="rank-code">${esc(r.code)}${r.abbr ? ' · ' + esc(r.abbr) : ''}</span></button>`).join('')}</div>`).join('') +
+    `<p class="ov-credit">Rendfokozati jelzések: Wikimedia Commons, „Rank Army Hungary” sorozat (Duke83), CC0.</p>`;
+}
+function ovOrg() {
+  if (!MH.structure) return '';
+  const chain = MH.structure.map((n, i) => `<div class="chain-node"><div class="chain-hu">${esc(n.hu)}</div><div class="chain-en">${esc(n.en)} ${speakBtn(n.en)}</div><p>${esc(n.d_hu)}</p><p class="chain-den">${esc(n.d_en)}</p></div>${i < MH.structure.length - 1 ? '<div class="chain-arrow" aria-hidden="true">↓</div>' : ''}`).join('');
+  const ech = `<table class="acc ov-table"><tr><th>Magyarul</th><th>Angolul</th><th>Létszám</th><th>Parancsnok</th></tr>${MH.echelons.map(e => `<tr><td><b>${esc(e.hu)}</b></td><td>${esc(e.t)} ${speakBtn(e.t)}</td><td>${esc(e.size)}</td><td>${esc(e.cmd_hu)}<br><small>${esc(e.cmd_en)}</small></td></tr>`).join('')}</table>`;
+  const units = MH.unitGroups.map(g => `<h5 class="unit-grp">${esc(g.hu)} <small>${esc(g.en)}</small></h5><ul class="unit-list">${MH.units.filter(u => u.g === g.id).map(u => `<li><b>${esc(u.hu)}</b>${u.city ? ` <span class="unit-city">${esc(u.city)}</span>` : ''}<br><span class="unit-en">${esc(u.en)}</span>${u.note ? ` <span class="unit-note">· ${esc(u.note)}</span>` : ''}</li>`).join('')}</ul>`).join('');
+  return `<p class="hint">Ki irányítja a honvédséget, és hogyan épül fel a vezetési lánc felülről lefelé.</p><div class="chain">${chain}</div>
+    <h4 class="grp-title">Egységszintek <small>Echelons — from squad to corps</small></h4>${ech}
+    <h4 class="grp-title">Fontosabb alakulatok <small>Main units — nevek 2026. szeptember 1-jétől</small></h4>${units}${asOfNote()}`;
+}
+function ovServices() {
+  if (!MH.services) return '';
+  return `<p class="hint">A haderőnem (service) a fegyveres erők nagy ága, a fegyvernem (arm / branch) ezen belül a szakterület. Magyarországnak nincs haditengerészete, a Dunán folyami flottilla működik.</p>
+    <div class="svc-grid">${MH.services.map(v => `<div class="svc-card"><div class="svc-hu">${esc(v.hu)}</div><div class="svc-en">${esc(v.t)}${v.abbr ? ' (' + esc(v.abbr) + ')' : ''} ${speakBtn(v.t)}</div><p>${esc(v.d_hu)}</p><p class="chain-den">${esc(v.d_en)}</p></div>`).join('')}</div>
+    <h4 class="grp-title">Fegyvernemek <small>Arms and branches</small></h4>
+    <table class="acc ov-table"><tr><th>Magyarul</th><th>Angolul</th><th>Mivel foglalkozik?</th></tr>${MH.branches.map(b => `<tr><td><b>${esc(b.hu)}</b></td><td>${esc(b.t)} ${speakBtn(b.t)}</td><td>${esc(b.d_hu)}</td></tr>`).join('')}</table>`;
+}
+function ovWeapons() {
+  const parts = cat => MIL.filter(m => m.sec === 'fegyver' && m.cat === cat && m.part);
+  const legend = cat => `<ol class="parts-legend">${parts(cat).map(m => `<li data-part="${esc(m.part)}" data-speak="${esc(m.t)}"><b>${esc(m.hu)}</b> — ${esc(m.t)}</li>`).join('')}</ol>`;
+  const fig = (svg, title, sub, cat) => `<figure class="weapon-fig"><figcaption><b>${title}</b> <small>${sub}</small></figcaption><div class="weapon-svg" data-cat="${cat}">${svg || ''}</div>${legend(cat)}</figure>`;
+  return `<p class="hint">A Magyar Honvédség jelenlegi egyéni fegyverei. Az ábrák sematikusak; mutass rá vagy kattints egy számra vagy részre: kiemeli a párját, és kimondja az angol nevét. A belső alkatrészek (zár, ütőszeg, helyretoló rugó stb.) a lenti kártyalistában vannak.</p>
+    <div class="weapon-facts">
+      <div><b>CZ BREN 2 gépkarabély</b> · 5,56×45 mm NATO · gázelvételes, rövid löketű gázdugattyú, forgózáras · alumínium felső tok, polimer alsó tok · állítható, oldalra csukható válltámasz · 30 töltényes tár · hazai gyártás Kiskunfélegyházán. Elődje az AMD-65 / AK-63 gépkarabély.</div>
+      <div><b>CZ P-10 C pisztoly</b> · 9×19 mm · ütőszeges (striker-fired) · polimer markolatváz, cserélhető markolathát · 15 töltényes tár · elsütőbillentyű-biztosító. Elődje a FÉG P9R pisztoly.</div>
+    </div>
+    ${fig(MH.rifleSvg, 'CZ BREN 2', 'assault rifle · gépkarabély', 'gépkarabély')}
+    ${fig(MH.pistolSvg, 'CZ P-10 C', 'pistol · pisztoly', 'pisztoly')}`;
+}
+$('#mil-overview').addEventListener('click', e => {
+  const sp = e.target.closest('[data-speak]'); if (sp) speak(sp.dataset.speak);
+  const part = e.target.closest('[data-part]'); if (part) highlightPart(part.closest('.weapon-fig'), part.dataset.part);
+});
+$('#mil-overview').addEventListener('mouseover', e => {
+  const part = e.target.closest('[data-part]'); if (part) highlightPart(part.closest('.weapon-fig'), part.dataset.part);
+});
+function highlightPart(fig, id) {
+  if (!fig) return;
+  $$('[data-part]', fig).forEach(el => el.classList.toggle('hl', el.dataset.part === id));
+}
+
+// ---------- Kártyalista ----------
 $('#mil-search').addEventListener('input', renderMil);
 function renderMil() {
   const q = norm($('#mil-search').value);
-  const list = MIL.filter(m => (milCat === 'all' || m.cat === milCat) && (!q || norm(m.t).includes(q) || norm(m.hu).includes(q) || norm(m.en).includes(q) || norm(m.abbr).includes(q)));
+  const list = milSecItems().filter(m => (milCat === 'all' || m.cat === milCat) && (!q || norm(m.t).includes(q) || norm(m.hu).includes(q) || norm(m.en || '').includes(q) || norm(m.abbr || '').includes(q)));
   $('#mil-count').textContent = `${list.length} kifejezés`;
   $('#mil-list').innerHTML = list.map(m => {
     const st = stat('mil', m.t);
@@ -371,14 +506,15 @@ function renderMil() {
       </div>
       <div class="entry-body" hidden>
         <div>${esc(m.en)}</div>
-        <span class="lbl">Példa</span>
-        <div class="ex">${esc(m.ex)} ${speakBtn(m.ex)}</div>
+        ${m.ex ? `<span class="lbl">Példa</span>
+        <div class="ex">${esc(m.ex)} ${speakBtn(m.ex)}</div>` : ''}
         ${m.ex_hu ? `<div class="ex-hu">${esc(m.ex_hu)}</div>` : ''}
         <div class="entry-actions">
           <button class="danger" data-grade="0">Újra</button>
           <button class="ok" data-grade="1">Tudom</button>
           <span class="tag">${esc(m.cat)}</span>
           ${badgeFor(st)}
+          ${delBtn()}
         </div>
       </div>
     </div>`;
@@ -387,11 +523,13 @@ function renderMil() {
 $('#mil-list').addEventListener('click', e => {
   const sp = e.target.closest('[data-speak]'); if (sp) { speak(sp.dataset.speak); return; }
   const entry = e.target.closest('.entry'); if (!entry) return;
+  if (e.target.closest('[data-del]')) { deleteItem('mil', entry.dataset.t); return; }
   const g = e.target.closest('[data-grade]');
   if (g) { grade('mil', entry.dataset.t, g.dataset.grade === '1'); renderMil(); return; }
   if (e.target.closest('.entry-head')) { const b = $('.entry-body', entry); b.hidden = !b.hidden; }
 });
-renderMil();
+$('#nato-grid').innerHTML = NATO.map(([l, w]) => `<div class="nato-cell" data-speak="${w}"><b>${l}</b> ${w}</div>`).join('');
+$('#nato-grid').addEventListener('click', e => { const c = e.target.closest('[data-speak]'); if (c) speak(c.dataset.speak); });
 
 // ============================================================
 // VÁLSÁGÖVEZETEK — szóbeli vizsga 3. feladata
@@ -501,13 +639,16 @@ $('#cards-dir-chips').addEventListener('click', e => { const b = e.target.closes
 
 // Egységes kártya-nézet a három forrásra
 function toCard(source, item) {
-  if (source === 'words') return { key: item.w, store: 'words', front: item.w, meta: `${item.pos} · ${item.ipa}`, hu: item.hu, en: item.en, ex: item.ex, ex_hu: item.ex_hu, syn: item.syn, ant: item.ant, col: item.col, speak: item.w };
-  if (source === 'phrases') return { key: item.p, store: 'phrases', front: item.p, meta: TYPE_HU[item.type] + ' · ' + REG_HU[item.reg], hu: item.hu, en: item.en, ex: item.ex, ex_hu: item.ex_hu, speak: item.p };
+  if (source === 'words') return { key: item.w, store: 'words', front: item.w, meta: [item.pos, item.ipa].filter(Boolean).join(' · '), hu: item.hu, en: item.en, ex: item.ex, ex_hu: item.ex_hu, syn: item.syn && item.syn.length ? item.syn : null, ant: item.ant, col: item.col && item.col.length ? item.col : null, speak: item.w };
+  if (source === 'phrases') return { key: item.p, store: 'phrases', front: item.p, meta: [TYPE_HU[item.type], REG_HU[item.reg]].filter(Boolean).join(' · '), hu: item.hu, en: item.en, ex: item.ex, ex_hu: item.ex_hu, speak: item.p };
+  if (source === 'verbs') return { key: item.v, store: 'verbs', front: (item.pos === 'phrase' ? '' : 'to ') + item.v, meta: item.forms || 'ige', hu: item.hu, en: item.en, ex: item.ex, ex_hu: item.ex_hu, syn: item.syn && item.syn.length ? item.syn : null, col: item.col && item.col.length ? item.col : null, speak: item.v };
+  if (source === 'linking') return { key: item.t, store: 'linking', front: item.t, meta: item.fnHu || 'átvezető', hu: item.hu, en: item.en, ex: item.ex, ex_hu: item.ex_hu, speak: item.t };
+  if (source === 'topics') return { key: item.t, store: 'topics', front: item.t, meta: item.topicHu || 'szóbeli téma', hu: item.hu, en: item.en, ex: item.ex, ex_hu: item.ex_hu, speak: item.t };
   return { key: item.t, store: 'mil', front: item.t, meta: item.cat + (item.abbr ? ' · ' + item.abbr : ''), hu: item.hu, en: item.en, ex: item.ex, ex_hu: item.ex_hu, speak: item.t };
 }
-function sourceItems(src) { return src === 'words' ? WORDS : src === 'phrases' ? PHRASES : MIL; }
+function sourceItems(src) { return ARR[src] || MIL; }
 function allCards(src) {
-  if (src === 'all') return ['words', 'phrases', 'mil'].flatMap(s => sourceItems(s).map(i => toCard(s, i)));
+  if (src === 'all') return STORES.flatMap(s => sourceItems(s).map(i => toCard(s, i)));
   return sourceItems(src).map(i => toCard(src, i));
 }
 function pickCards(src, pick) {
@@ -689,6 +830,14 @@ document.addEventListener('keydown', e => {
     else if (e.key === 'f' || e.key === 'F') pvGrade(false);
     else if ((e.key === 'h' || e.key === 'H') && pv.cards[pv.i]) speak(pv.cards[pv.i].p);
   }
+  // közös quizlet-motor (Igék, Átvezetők, Szóbeli témák)
+  LEARNERS.forEach(l => {
+    if (activeTab !== l.tab || !l.active()) return;
+    if (e.key === ' ') { e.preventDefault(); l.flip(); }
+    else if (e.key === 'j' || e.key === 'J') l.gradeCur(true);
+    else if (e.key === 'f' || e.key === 'F') l.gradeCur(false);
+    else if (e.key === 'h' || e.key === 'H') l.speakCur();
+  });
   // katonai quizlet billentyűk
   if (activeTab === 'mil' && !$('#ml-drill').hidden) {
     if (e.key === ' ') { e.preventDefault(); mlFlip(); }
@@ -701,15 +850,38 @@ document.addEventListener('keydown', e => {
 // ============================================================
 // PHRASAL VERB QUIZLET MÓD
 // ============================================================
-const PHRASAL = PHRASES.filter(p => p.type === 'phrasal');
-
-function pvBatchCards() {
-  const chip = $('#pv-batch-chips .chip.active') || $('#pv-batch-chips .chip');
-  const from = parseInt(chip.dataset.from) || 0;
-  const to = chip.dataset.to === 'all' ? PHRASAL.length : parseInt(chip.dataset.to);
-  return PHRASAL.slice(from, to);
+const PHRASAL = [];
+function rebuildPhrasal() { PHRASAL.length = 0; PHRASES.forEach(p => { if (p.type === 'phrasal') PHRASAL.push(p); }); }
+rebuildPhrasal();
+function pvSource() {
+  const src = chipGroupValue('pv-src-chips') || 'all';
+  return src === 'jegyzet' ? PHRASAL.filter(p => p.src === 'jegyzet') : src === 'own' ? PHRASAL.filter(p => p.own) : PHRASAL;
 }
+// 10-es tömb-chipek a kiválasztott forrás hosszához igazítva
+function buildBatchChips(id, n) {
+  const box = $('#' + id), cur = box.querySelector('.chip.active');
+  const curFrom = cur ? cur.dataset.from : '0', curTo = cur ? cur.dataset.to : '10';
+  let h = '';
+  for (let f = 0; f < n; f += 10) { const t = Math.min(n, f + 10); h += `<button class="chip" data-from="${f}" data-to="${t}">${f + 1}–${t}</button>`; }
+  h += `<button class="chip" data-from="0" data-to="all">Összes</button>`;
+  box.innerHTML = h;
+  const keep = box.querySelector(`.chip[data-from="${curFrom}"][data-to="${curTo}"]`) || box.querySelector('.chip');
+  if (keep) keep.classList.add('active');
+}
+function batchSlice(id, list) {
+  const chip = $('#' + id + ' .chip.active') || $('#' + id + ' .chip');
+  if (!chip) return list;
+  const from = parseInt(chip.dataset.from) || 0;
+  return chip.dataset.to === 'all' ? list : list.slice(from, parseInt(chip.dataset.to));
+}
+function pvBatchCards() { return batchSlice('pv-batch-chips', pvSource()); }
 function pvUpdateCount() { $('#pv-count').textContent = pvBatchCards().length; }
+function pvRefresh() { rebuildPhrasal(); buildBatchChips('pv-batch-chips', pvSource().length); pvUpdateCount(); renderPVList(); }
+$('#pv-src-chips').addEventListener('click', e => {
+  const b = e.target.closest('.chip'); if (!b) return;
+  setChipGroup('pv-src-chips', b.dataset.val); buildBatchChips('pv-batch-chips', pvSource().length); pvUpdateCount(); renderPVList();
+});
+buildBatchChips('pv-batch-chips', pvSource().length);
 pvUpdateCount();
 
 $('#pv-dir-chips').addEventListener('click', e => {
@@ -737,21 +909,25 @@ function pvSensesBody(p) {
 }
 function renderPVList() {
   const q = norm($('#pv-search').value);
-  const list = q ? PHRASAL.filter(p => norm(p.p).includes(q) || norm(p.hu).includes(q) || norm(p.en).includes(q)) : PHRASAL;
-  $('#pv-list-count').textContent = q ? `${list.length} találat` : `${PHRASAL.length} phrasal verb`;
+  const srcList = pvSource();
+  const list = q ? srcList.filter(p => norm(p.p).includes(q) || norm(p.hu).includes(q) || norm(p.en).includes(q)) : srcList;
+  $('#pv-list-count').textContent = q ? `${list.length} találat` : `${srcList.length} phrasal verb`;
   $('#pv-list').innerHTML = list.map(p => `<div class="entry" data-p="${esc(p.p)}">
     <div class="entry-head">
       <span class="entry-word">${esc(p.p)}</span>
       ${speakBtn(p.p)}
       <span class="entry-hu">${esc(p.hu)}</span>
     </div>
-    <div class="entry-body" hidden>${pvSensesBody(p)}</div>
+    <div class="entry-body" hidden>${pvSensesBody(p)}
+      <div class="entry-actions">${p.src === 'jegyzet' ? '<span class="tag">füzetemből</span>' : ''}${p.own ? '<span class="tag">saját</span>' : ''}${badgeFor(stat('phrases', p.p))}${delBtn()}</div>
+    </div>
   </div>`).join('');
 }
 $('#pv-search').addEventListener('input', renderPVList);
 $('#pv-list').addEventListener('click', e => {
   const sp = e.target.closest('[data-speak]'); if (sp) { speak(sp.dataset.speak); return; }
   const entry = e.target.closest('.entry'); if (!entry) return;
+  if (e.target.closest('[data-del]')) { deleteItem('phrases', entry.dataset.p); return; }
   if (e.target.closest('.entry-head')) { const b = $('.entry-body', entry); b.hidden = !b.hidden; }
 });
 renderPVList();
@@ -791,8 +967,8 @@ function pvShowCard() {
   $$('.pv-flip-hint').forEach(el => el.textContent = `${pv.i + 1} / ${pv.cards.length} · kattints a megfordításhoz`);
   if (pv.dir === 'en') {
     $('#pv-front-word').textContent = p.p;
-    const re = new RegExp(p.key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
-    $('#pv-front-ex').textContent = p.ex.replace(re, '______');
+    const re = p.key ? new RegExp(p.key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i') : null;
+    $('#pv-front-ex').textContent = re ? p.ex.replace(re, '______') : (p.ex || '');
     $('#pv-back-main').textContent = p.hu;
     if (multi) {
       $('#pv-back-def').innerHTML = p.senses.map((s, i) =>
@@ -894,11 +1070,12 @@ function mlBatchCards() {
   const cat = $('#ml-cat-select').value;
   const chip = $('#ml-batch-chips .chip.active') || $('#ml-batch-chips .chip');
   const n = chip.dataset.val;
-  const base = cat === 'all' ? MIL : MIL.filter(m => m.cat === cat);
+  const sec = milSecItems();
+  const base = cat === 'all' ? sec : sec.filter(m => m.cat === cat);
   return n === 'all' ? base : base.slice(0, parseInt(n));
 }
 function mlUpdateCount() { $('#ml-count').textContent = mlBatchCards().length; }
-mlUpdateCount();
+setMilSec('rang');
 
 $('#ml-dir-chips').addEventListener('click', e => {
   const b = e.target.closest('.chip'); if (!b) return;
@@ -1005,8 +1182,9 @@ function milReview(m) { return `<b>${esc(m.t)}</b> — ${esc(m.hu)}`; }
 function milFeedback(m) { return `<span class="lbl">${esc(m.t)}${m.abbr ? ' · ' + esc(m.abbr) : ''}</span>${esc(m.hu)} — ${esc(m.en)}<span class="lbl">Példa</span><i>${esc(m.ex)}</i>`; }
 $('#milq-start').addEventListener('click', () => {
   const mode = $('#milq-mode').value, cat = $('#milq-cat').value;
-  let pool = MIL.filter(m => cat === 'all' || m.cat === cat);
-  if (mode === 'abbr') pool = MIL.filter(m => m.abbr);
+  let pool = milSecItems().filter(m => cat === 'all' || m.cat === cat);
+  if (mode === 'abbr') pool = MIL.filter(m => m.abbr && /^[A-Z]/.test(m.abbr));
+  if (mode === 'def2en') pool = pool.filter(m => m.en);
   if (pool.length < 4) { toast('Túl kevés kifejezés ebben a kategóriában'); return; }
   const qs = shuffle(pool).slice(0, 15).map(m => {
     const base = { key: m.t, store: 'mil', quizName: 'milq', feedback: milFeedback(m), review: milReview(m) };
@@ -1062,61 +1240,332 @@ $('#nato-letter').addEventListener('click', () => {
 });
 
 // ============================================================
-// STATISZTIKA
+// KÖZÖS QUIZLET-MOTOR (Igék, Átvezetők, Szóbeli témák szókártyái)
 // ============================================================
-function counts(store, items, keyOf) {
-  const c = { new: 0, learning: 0, known: 0, due: 0 };
-  items.forEach(i => { const st = stat(store, keyOf(i)); c[status(st)]++; if (isDue(st)) c.due++; });
-  return c;
-}
-function streak() {
-  let n = 0; const d = new Date();
-  for (;;) { const k = d.toISOString().slice(0, 10); if (S.log[k] && S.log[k][0] > 0) { n++; d.setDate(d.getDate() - 1); } else break; }
-  return n;
-}
-function tile(title, c, total) {
-  const pct = k => (c[k] / total * 100) + '%';
-  return `<div class="tile"><div class="t-title">${title}</div><div class="t-val">${c.known} <small style="font-size:.9rem;color:var(--muted)">/ ${total} tudom</small></div>
-    <div class="t-sub">${c.learning} tanulás alatt · ${c.new} új · <b style="color:var(--danger)">${c.due} esedékes</b></div>
-    <div class="mini"><span style="width:${pct('known')};background:var(--ok)"></span><span style="width:${pct('learning')};background:var(--warn)"></span></div></div>`;
-}
-function renderStats() {
-  const cw = counts('words', WORDS, w => w.w), cp = counts('phrases', PHRASES, p => p.p), cm = counts('mil', MIL, m => m.t);
-  const totalRev = Object.values(S.log).reduce((a, l) => a + l[0], 0);
-  $('#stat-tiles').innerHTML = tile('C2 szavak', cw, WORDS.length) + tile('Frázisok', cp, PHRASES.length) + tile('Katonai', cm, MIL.length) +
-    `<div class="tile"><div class="t-title">Sorozat</div><div class="t-val">${streak()} nap</div><div class="t-sub">${totalRev} ismétlés összesen</div></div>`;
-  const names = { milq: 'Katonai kvíz', nato: 'NATO-ábécé' };
-  $('#stat-quiz').innerHTML = `<table class="acc"><tr><th>Kvíz</th><th>Kérdés</th><th>Helyes</th><th>Pontosság</th></tr>` +
-    Object.keys(names).map(k => { const q = S.quiz[k]; return `<tr><td>${names[k]}</td><td>${q[0]}</td><td>${q[1]}</td><td>${q[0] ? Math.round(q[1] / q[0] * 100) + '%' : '—'}</td></tr>`; }).join('') + '</table>';
-  drawChart();
-}
-function drawChart() {
-  const cv = $('#stat-chart'); if (!cv || activeTab !== 'stats') return;
-  const cs = getComputedStyle(document.documentElement);
-  const dpr = window.devicePixelRatio || 1;
-  const W = cv.clientWidth || 800, H = 160;
-  cv.width = W * dpr; cv.height = H * dpr;
-  const ctx = cv.getContext('2d'); ctx.scale(dpr, dpr);
-  ctx.clearRect(0, 0, W, H);
-  const days = []; const d = new Date();
-  for (let i = 20; i >= 0; i--) { const x = new Date(d); x.setDate(d.getDate() - i); days.push(x.toISOString().slice(0, 10)); }
-  const vals = days.map(k => S.log[k] || [0, 0]);
-  const max = Math.max(5, ...vals.map(v => v[0]));
-  const pad = 28, bw = (W - pad * 2) / days.length;
-  ctx.font = '11px sans-serif'; ctx.textAlign = 'center';
-  days.forEach((k, i) => {
-    const [n, ok] = vals[i];
-    const x = pad + i * bw + bw * .15, w = bw * .7;
-    const h = (H - 30) * n / max, hOk = (H - 30) * ok / max;
-    ctx.fillStyle = cs.getPropertyValue('--panel-2').trim(); ctx.fillRect(x, H - 20 - h, w, h);
-    ctx.fillStyle = cs.getPropertyValue('--accent').trim(); ctx.fillRect(x, H - 20 - hOk, w, hOk);
-    ctx.fillStyle = cs.getPropertyValue('--muted').trim();
-    if (i % 5 === 0 || i === days.length - 1) ctx.fillText(k.slice(5), x + w / 2, H - 6);
-    if (n) ctx.fillText(n, x + w / 2, H - 24 - h);
+// cfg: { pfx, store, key(item), speakOf(item), face(item, dir) -> {front, meta, frontEx, main, def, ex, exhu}, batch(), unit }
+const LEARNERS = [];
+function makeLearn(tab, cfg) {
+  const st = { cards: [], i: 0, dir: 'en', flipped: false, round: 1, total: 0, learned: 0, missed: [] };
+  const el = id => $('#' + cfg.pfx + '-' + id);
+  const setTxt = (id, v) => { el(id).textContent = v || ''; };
+  el('dir-chips').addEventListener('click', e => { const b = e.target.closest('.chip'); if (b) setChipGroup(cfg.pfx + '-dir-chips', b.dataset.val); });
+  el('start').addEventListener('click', () => {
+    const batch = cfg.batch();
+    if (!batch.length) { toast('Nincs kártya ehhez a kiválasztáshoz'); return; }
+    Object.assign(st, { dir: chipGroupValue(cfg.pfx + '-dir-chips') || 'en', cards: shuffle(batch), i: 0, round: 1, total: batch.length, learned: 0, missed: [] });
+    el('setup').hidden = true; el('result').hidden = true; el('drill').hidden = false;
+    show();
   });
+  el('card').addEventListener('click', flip);
+  el('quit').addEventListener('click', end);
+  el('speak').addEventListener('click', speakCur);
+  el('ok').addEventListener('click', () => gradeCur(true));
+  el('fail').addEventListener('click', () => gradeCur(false));
+  function show() {
+    const it = st.cards[st.i], f = cfg.face(it, st.dir);
+    st.flipped = false; el('card').classList.remove('flipped'); el('actions').hidden = true;
+    setTxt('progress', `${st.learned} / ${st.total} megtanult`);
+    el('bar').style.width = (st.learned / st.total * 100) + '%';
+    setTxt('round', st.round > 1 ? `${st.round}. kör` : '');
+    $$('.pv-flip-hint', el('drill')).forEach(x => x.textContent = `${st.i + 1} / ${st.cards.length} · kattints a megfordításhoz`);
+    setTxt('front-word', f.front); setTxt('front-meta', f.meta); setTxt('front-ex', f.frontEx);
+    setTxt('back-main', f.main); setTxt('back-def', f.def); setTxt('back-ex', f.ex); setTxt('back-exhu', f.exhu);
+    if (st.dir === 'en' && S.settings.speak) speakCur();
+  }
+  function flip() {
+    if (st.flipped) return;
+    st.flipped = true; el('card').classList.add('flipped'); el('actions').hidden = false;
+    if (st.dir === 'hu' && S.settings.speak) speakCur();
+  }
+  function gradeCur(ok) {
+    if (!st.flipped) return;
+    const it = st.cards[st.i];
+    grade(cfg.store, cfg.key(it), ok);
+    if (ok) st.learned++; else st.missed.push(it);
+    st.i++;
+    if (st.i < st.cards.length) { show(); return; }
+    if (st.missed.length) { st.round++; st.cards = shuffle(st.missed); st.i = 0; st.missed = []; show(); return; }
+    result(`<div class="score">🎉</div><p><b>${st.round === 1 ? 'Első körre megtanultad mind!' : `${st.round} kör alatt megtanultad mind!`}</b></p><p class="hint">${st.total} ${cfg.unit} · ${st.round} kör</p>`, 'Új kör');
+  }
+  function end() {
+    if (!st.total) { el('drill').hidden = true; el('setup').hidden = false; return; }
+    result(`<div class="score">${Math.round(st.learned / st.total * 100)}%</div><p>${st.learned} megtanult · ${st.total - st.learned} maradt</p>`, 'Újrakezd');
+  }
+  function result(html, btn) {
+    el('drill').hidden = true;
+    el('result').innerHTML = html + `<div class="row"><button class="primary" data-again>${btn}</button></div>`;
+    el('result').hidden = false;
+    $('[data-again]', el('result')).addEventListener('click', () => { el('result').hidden = true; el('setup').hidden = false; if (cfg.onBack) cfg.onBack(); });
+  }
+  function speakCur() { const it = st.cards[st.i]; if (it) speak(cfg.speakOf(it)); }
+  const api = { tab, active: () => !el('drill').hidden, flip, gradeCur, speakCur };
+  LEARNERS.push(api);
+  return api;
 }
 
-// ---------- Export / import / wipe ----------
+// ============================================================
+// IGÉK
+// ============================================================
+function vbSource() {
+  const f = $('#vb-filter').value;
+  return f === 'irr' ? VERBS.filter(v => v.irr) : f === 'own' ? VERBS.filter(v => v.own) : VERBS;
+}
+function vbBatch() { return batchSlice('vb-batch-chips', vbSource()); }
+function vbUpdateCount() { $('#vb-count').textContent = vbBatch().length; }
+function vbRefresh() { buildBatchChips('vb-batch-chips', vbSource().length); vbUpdateCount(); renderVerbs(); }
+$('#vb-batch-chips').addEventListener('click', e => { const b = e.target.closest('.chip'); if (!b) return; $$('#vb-batch-chips .chip').forEach(x => x.classList.toggle('active', x === b)); vbUpdateCount(); });
+$('#vb-filter').addEventListener('change', vbRefresh);
+$('#vb-search').addEventListener('input', renderVerbs);
+function renderVerbs() {
+  const q = norm($('#vb-search').value), src = vbSource();
+  const list = q ? src.filter(v => norm(v.v).includes(q) || norm(v.hu).includes(q) || norm(v.en || '').includes(q)) : src;
+  $('#vb-list-count').textContent = q ? `${list.length} találat` : `${src.length} ige`;
+  $('#vb-list').innerHTML = list.map(v => `<div class="entry" data-k="${esc(v.v)}">
+    <div class="entry-head">
+      <span class="entry-word">${v.pos === 'phrase' ? '' : 'to '}${esc(v.v)}</span>
+      ${v.forms ? `<span class="entry-pos">${esc(v.forms)}</span>` : ''}
+      ${v.ipa ? `<span class="entry-ipa">${esc(v.ipa)}</span>` : ''}
+      ${speakBtn(v.v)}
+      <span class="entry-hu">${esc(v.hu)}</span>
+    </div>
+    <div class="entry-body" hidden>
+      <div class="entry-body-grid">
+        <div>
+          ${v.en ? `<div>${esc(v.en)}</div>` : ''}
+          ${v.ex ? `<span class="lbl">Példa</span><div class="ex">${esc(v.ex)} ${speakBtn(v.ex)}</div>` : ''}
+          ${v.ex_hu ? `<div class="ex-hu">${esc(v.ex_hu)}</div>` : ''}
+        </div>
+        <div>
+          ${v.syn && v.syn.length ? `<span class="lbl">Szinonimák</span><div class="row">${v.syn.map(x => `<span class="tag syn" data-speak="${esc(x)}">${esc(x)}</span>`).join('')}</div>` : ''}
+          ${v.col && v.col.length ? `<span class="lbl">Kollokációk</span><div class="row">${v.col.map(x => `<span class="tag col">${esc(x)}</span>`).join('')}</div>` : ''}
+        </div>
+      </div>
+      <div class="entry-actions">
+        <button class="danger" data-grade="0">Újra</button>
+        <button class="ok" data-grade="1">Tudom</button>
+        ${v.irr ? '<span class="tag">rendhagyó</span>' : ''}${v.page ? `<span class="tag">füzet ${v.page}. oldal</span>` : ''}${v.own ? '<span class="tag">saját</span>' : ''}
+        ${badgeFor(stat('verbs', v.v))}
+        ${delBtn()}
+      </div>
+    </div>
+  </div>`).join('');
+}
+$('#vb-list').addEventListener('click', e => entryClick(e, 'verbs', renderVerbs));
+makeLearn('verbs', {
+  pfx: 'vb', store: 'verbs', unit: 'ige', key: v => v.v, speakOf: v => v.v, batch: vbBatch, onBack: vbUpdateCount,
+  face: (v, dir) => dir === 'en'
+    ? { front: (v.pos === 'phrase' ? '' : 'to ') + v.v, meta: v.forms, frontEx: v.ex && v.key ? v.ex.replace(v.key, '______') : '', main: v.hu, def: v.en, ex: v.ex, exhu: v.ex_hu }
+    : { front: v.hu, meta: '', frontEx: '', main: (v.pos === 'phrase' ? '' : 'to ') + v.v + (v.forms ? '  (' + v.forms + ')' : ''), def: v.en, ex: v.ex, exhu: v.ex_hu }
+});
+vbRefresh();
+
+// ============================================================
+// ÁTVEZETŐ KIFEJEZÉSEK
+// ============================================================
+let lkFn = 'all';
+function lkGroups() {
+  const m = new Map(); LINK.forEach(l => { if (!m.has(l.fn)) m.set(l.fn, l.fnHu || l.fn); }); return m;
+}
+function lkBuild() {
+  const g = lkGroups();
+  if (lkFn !== 'all' && !g.has(lkFn)) lkFn = 'all';
+  $('#lk-fns').innerHTML = [['all', 'mind'], ...g].map(([k, v]) => `<button class="chip${k === lkFn ? ' active' : ''}" data-fn="${esc(k)}">${esc(v)}</button>`).join('');
+  const sel = $('#lk-fn-select'), cur = sel.value;
+  sel.innerHTML = '<option value="all">Minden csoport</option>' + [...g].map(([k, v]) => `<option value="${esc(k)}">${esc(v)}</option>`).join('');
+  sel.value = g.has(cur) ? cur : 'all';
+}
+function lkBatch() { const f = $('#lk-fn-select').value; return f === 'all' ? LINK : LINK.filter(l => l.fn === f); }
+function lkUpdateCount() { $('#lk-count').textContent = lkBatch().length; }
+function lkRefresh() { lkBuild(); lkUpdateCount(); renderLinking(); }
+$('#lk-fns').addEventListener('click', e => { const b = e.target.closest('.chip'); if (!b) return; lkFn = b.dataset.fn; $$('#lk-fns .chip').forEach(x => x.classList.toggle('active', x === b)); renderLinking(); });
+$('#lk-fn-select').addEventListener('change', lkUpdateCount);
+$('#lk-search').addEventListener('input', renderLinking);
+function renderLinking() {
+  const q = norm($('#lk-search').value);
+  const list = LINK.filter(l => (lkFn === 'all' || l.fn === lkFn) && (!q || norm(l.t).includes(q) || norm(l.hu).includes(q)));
+  $('#lk-list-count').textContent = `${list.length} kifejezés`;
+  $('#lk-list').innerHTML = list.map(l => `<div class="entry" data-k="${esc(l.t)}">
+    <div class="entry-head">
+      <span class="entry-word">${esc(l.t)}</span>
+      ${speakBtn(l.t)}
+      <span class="entry-hu">${esc(l.hu)}</span>
+    </div>
+    <div class="entry-body" hidden>
+      ${l.en ? `<div>${esc(l.en)}</div>` : ''}
+      ${l.ex ? `<span class="lbl">Példa</span><div class="ex">${esc(l.ex)} ${speakBtn(l.ex)}</div>` : ''}
+      ${l.ex_hu ? `<div class="ex-hu">${esc(l.ex_hu)}</div>` : ''}
+      <div class="entry-actions">
+        <button class="danger" data-grade="0">Újra</button>
+        <button class="ok" data-grade="1">Tudom</button>
+        <span class="tag">${esc(l.fnHu || l.fn)}</span>${l.src === 'jegyzet' ? '<span class="tag">füzetemből</span>' : ''}${l.own ? '<span class="tag">saját</span>' : ''}
+        ${badgeFor(stat('linking', l.t))}
+        ${delBtn()}
+      </div>
+    </div>
+  </div>`).join('');
+}
+$('#lk-list').addEventListener('click', e => entryClick(e, 'linking', renderLinking));
+makeLearn('linking', {
+  pfx: 'lk', store: 'linking', unit: 'kifejezés', key: l => l.t, speakOf: l => l.t, batch: lkBatch, onBack: lkUpdateCount,
+  face: (l, dir) => dir === 'en'
+    ? { front: l.t, meta: l.fnHu, frontEx: '', main: l.hu, def: l.en, ex: l.ex, exhu: l.ex_hu }
+    : { front: l.hu, meta: l.fnHu, frontEx: '', main: l.t, def: l.en, ex: l.ex, exhu: l.ex_hu }
+});
+lkRefresh();
+
+// ============================================================
+// SZÓBELI TÉMÁK
+// ============================================================
+let tpMode = 'study', tpTopic = 'all';
+$('#tp-mode').addEventListener('click', e => {
+  const b = e.target.closest('.chip'); if (!b) return;
+  tpMode = b.dataset.mode; $$('#tp-mode .chip').forEach(x => x.classList.toggle('active', x === b)); renderTopics();
+});
+(function initTopics() {
+  $('#tp-tags').innerHTML = [['all', 'mind'], ...TOPICS.map(t => [t.id, t.hu])].map(([k, v]) => `<button class="chip${k === 'all' ? ' active' : ''}" data-id="${esc(k)}">${esc(v)}</button>`).join('');
+  $('#tp-tags').addEventListener('click', e => {
+    const b = e.target.closest('.chip'); if (!b) return;
+    tpTopic = b.dataset.id; $$('#tp-tags .chip').forEach(x => x.classList.toggle('active', x === b)); renderTopics();
+  });
+})();
+function tpBuildSelect() {
+  const sel = $('#tp-topic-select'), cur = sel.value;
+  const ids = Array.from(new Set(TVOC.map(v => v.topic)));
+  const name = id => (TOPICS.find(t => t.id === id) || { hu: id }).hu;
+  sel.innerHTML = '<option value="all">Minden témakör</option>' + ids.map(id => `<option value="${esc(id)}">${esc(name(id))}</option>`).join('');
+  sel.value = ids.includes(cur) ? cur : 'all';
+}
+function tpBatch() { const f = $('#tp-topic-select').value; const l = f === 'all' ? TVOC : TVOC.filter(v => v.topic === f); return l; }
+function tpUpdateCount() { $('#tp-count').textContent = tpBatch().length; }
+function tpRefresh() { tpBuildSelect(); tpUpdateCount(); }
+$('#tp-topic-select').addEventListener('change', tpUpdateCount);
+function renderTopics() {
+  if (!TOPICS.length) { $('#tp-list').innerHTML = '<p class="hint">Ez a modul még készül.</p>'; return; }
+  const open = new Set($$('.crisis-entry', $('#tp-list')).filter(el => !$('.entry-body', el).hidden).map(el => el.dataset.id));
+  const list = TOPICS.filter(t => tpTopic === 'all' || t.id === tpTopic);
+  $('#tp-list').innerHTML = list.map(t => {
+    const qs = t.questions.filter(q => tpMode !== 'hash' || q.hash);
+    if (!qs.length) return '';
+    return `<div class="entry crisis-entry" data-id="${esc(t.id)}">
+    <div class="entry-head crisis-head">
+      <span class="crisis-title">${esc(t.en)}</span>
+      ${speakBtn(t.en)}
+      <span class="entry-hu">${esc(t.hu)} · ${qs.length} kérdés</span>
+    </div>
+    <div class="entry-body"${open.has(t.id) || tpTopic !== 'all' ? '' : ' hidden'}>
+      <div class="crisis-qa">${qs.map(q => `
+        <div class="crisis-q">${q.hash ? '<span class="hash-mark" title="A lapon #-tel jelölt kérdés">#</span> ' : ''}${esc(q.q)} ${speakBtn(q.q)}</div>
+        <div class="tp-qhu">${esc(q.q_hu)}</div>
+        <div class="crisis-a${tpMode === 'practice' ? ' hidden-answer' : ''}">${esc(q.a)} ${speakBtn(q.a)}</div>
+        <div class="crisis-a-hu">${esc(q.a_hu)}</div>
+        ${q.vocab && q.vocab.length ? `<div class="row tp-vocab">${q.vocab.map(v => `<span class="tag syn" data-speak="${esc(v.en)}" title="${esc(v.hu)}">${esc(v.en)} <small>· ${esc(v.hu)}</small></span>`).join('')}</div>` : ''}
+      `).join('')}</div>
+    </div>
+  </div>`;
+  }).join('');
+}
+$('#tp-list').addEventListener('click', e => {
+  const hiddenA = e.target.closest('.crisis-a.hidden-answer'); if (hiddenA) { hiddenA.classList.remove('hidden-answer'); return; }
+  const sp = e.target.closest('[data-speak]'); if (sp) { speak(sp.dataset.speak); return; }
+  const entry = e.target.closest('.entry'); if (!entry) return;
+  if (e.target.closest('.crisis-head')) { const b = $('.entry-body', entry); b.hidden = !b.hidden; }
+});
+makeLearn('topics', {
+  pfx: 'tp', store: 'topics', unit: 'kifejezés', key: v => v.t, speakOf: v => v.t, batch: tpBatch, onBack: tpUpdateCount,
+  face: (v, dir) => dir === 'en'
+    ? { front: v.t, meta: v.topicHu, frontEx: '', main: v.hu, def: '', ex: v.ex, exhu: v.ex_hu }
+    : { front: v.hu, meta: v.topicHu, frontEx: '', main: v.t, def: '', ex: v.ex, exhu: v.ex_hu }
+});
+tpRefresh();
+
+// ============================================================
+// LISTÁK SZERKESZTÉSE — felvétel, törlés, visszaállítás (localStorage)
+// ============================================================
+function delBtn() { return '<button class="del-btn" data-del title="Törlés a listából">Törlés</button>'; }
+// közös kattintáskezelő a listákhoz (kiejtés, értékelés, törlés, lenyitás)
+function entryClick(e, store, rerender) {
+  const sp = e.target.closest('[data-speak]'); if (sp) { speak(sp.dataset.speak); return; }
+  const entry = e.target.closest('.entry'); if (!entry) return;
+  if (e.target.closest('[data-del]')) { deleteItem(store, entry.dataset.k); return; }
+  const g = e.target.closest('[data-grade]');
+  if (g) { grade(store, entry.dataset.k, g.dataset.grade === '1'); rerender(); return; }
+  if (e.target.closest('.entry-head')) { const b = $('.entry-body', entry); b.hidden = !b.hidden; }
+}
+const STORE_LABEL = { words: 'szó', phrases: 'phrasal verb', verbs: 'ige', linking: 'átvezető kifejezés', mil: 'katonai kifejezés', topics: 'szókártya' };
+function ownKeyOf(store, c) { return KEYF[store](normalizeOwn(store, c)); }
+function deleteItem(store, key) {
+  const label = STORE_LABEL[store];
+  const ci = S.custom[store].findIndex(c => ownKeyOf(store, c) === key);
+  if (ci >= 0) {
+    if (!confirm(`Törlöd a saját felvett elemet: „${key}”?`)) return;
+    S.custom[store].splice(ci, 1);
+  } else {
+    if (!confirm(`Törlöd a listából: „${key}”? (A Lista szerkesztése alatt később visszaállíthatod.)`)) return;
+    if (!S.hidden[store].includes(key)) S.hidden[store].push(key);
+  }
+  save(); refreshStore(store); toast(`Törölve: ${label}`);
+}
+function refreshStore(store) {
+  applyEdits(store);
+  if (store === 'words') { buildWordTags(); renderWords(); wdUpdateCount(); }
+  if (store === 'phrases') pvRefresh();
+  if (store === 'verbs') vbRefresh();
+  if (store === 'linking') lkRefresh();
+  if (store === 'mil') milRefresh();
+  if (store === 'topics') tpRefresh();
+  renderEditor(store); updateSidebar(); updateCardsAvail();
+}
+function renderEditor(store) {
+  const det = document.querySelector(`.editor[data-store="${store}"]`); if (!det) return;
+  const body = $('.editor-body', det);
+  const own = S.custom[store], hid = S.hidden[store];
+  const secOpts = store === 'mil' ? `<label>Melyik részbe?<select data-f="sec">${Object.entries(MIL_SECS).map(([k, v]) => `<option value="${k}"${k === milSec ? ' selected' : ''}>${esc(v)}</option>`).join('')}</select></label>` : '';
+  const topicOpts = store === 'topics' ? `<label>Témakör<select data-f="topic">${TOPICS.map(t => `<option value="${esc(t.id)}">${esc(t.hu)}</option>`).join('')}</select></label>` : '';
+  body.innerHTML = `
+    <form class="editor-form" autocomplete="off">
+      <label>Angolul *<input data-f="en" required placeholder="${store === 'verbs' ? 'pl. to deploy' : 'angol kifejezés'}"></label>
+      <label>Magyarul *<input data-f="hu" required placeholder="magyar jelentés"></label>
+      <label class="wide">Angol magyarázat<input data-f="def" placeholder="rövid angol definíció (nem kötelező)"></label>
+      <label class="wide">Angol példamondat<input data-f="ex" placeholder="példamondat (nem kötelező)"></label>
+      <label class="wide">Magyar fordítás<input data-f="ex_hu" placeholder="a példamondat fordítása (nem kötelező)"></label>
+      ${secOpts}${topicOpts}
+      <div class="wide"><button class="primary" type="submit">Hozzáadás</button></div>
+    </form>
+    <div class="editor-lists">
+      <div><span class="lbl">Saját felvett elemek (${own.length})</span>
+        ${own.length ? `<ul class="editor-ul">${own.map((c, i) => `<li><b>${esc(c.en)}</b> — ${esc(c.hu)} <button class="del-btn" data-own="${i}">Törlés</button></li>`).join('')}</ul>` : '<p class="hint">Még nincs saját elem.</p>'}
+      </div>
+      <div><span class="lbl">Törölt elemek (${hid.length})</span>
+        ${hid.length ? `<ul class="editor-ul">${hid.map((k, i) => `<li>${esc(k)} <button data-restore="${i}">Visszaállítás</button></li>`).join('')}</ul><button data-restore-all>Mind visszaállítása</button>` : '<p class="hint">Nincs törölt elem. Egy elemet a lenyitott sorában a „Törlés” gombbal távolíthatsz el.</p>'}
+      </div>
+    </div>`;
+}
+document.addEventListener('submit', e => {
+  const det = e.target.closest('.editor'); if (!det) return;
+  e.preventDefault();
+  const store = det.dataset.store, f = {};
+  $$('[data-f]', e.target).forEach(i => { f[i.dataset.f] = i.value.trim(); });
+  if (!f.en || !f.hu) { toast('Az angol és a magyar mező kötelező'); return; }
+  const key = ownKeyOf(store, f);
+  if (ARR[store].some(x => KEYF[store](x).toLowerCase() === key.toLowerCase())) { toast('Ez már szerepel a listában'); return; }
+  f.at = Date.now();
+  S.custom[store].push(f); save(); refreshStore(store); toast('Hozzáadva — a kártyák közé is bekerült');
+  const first = $('.editor-form [data-f="en"]', det); if (first) first.focus();
+});
+document.addEventListener('click', e => {
+  const det = e.target.closest('.editor'); if (!det) return;
+  const store = det.dataset.store;
+  const o = e.target.closest('[data-own]');
+  if (o) { const c = S.custom[store][+o.dataset.own]; if (c && confirm(`Törlöd: „${c.en}”?`)) { S.custom[store].splice(+o.dataset.own, 1); save(); refreshStore(store); } return; }
+  const r = e.target.closest('[data-restore]');
+  if (r) { S.hidden[store].splice(+r.dataset.restore, 1); save(); refreshStore(store); toast('Visszaállítva'); return; }
+  if (e.target.closest('[data-restore-all]')) { S.hidden[store] = []; save(); refreshStore(store); toast('Minden visszaállítva'); }
+});
+STORES.forEach(renderEditor);
+
+// ============================================================
+// STATISZTIKA
+// ============================================================
 $('#btn-export').addEventListener('click', () => {
   const blob = new Blob([JSON.stringify(S, null, 2)], { type: 'application/json' });
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `c2angol-${today()}.json`; a.click();
@@ -1127,14 +1576,14 @@ $('#import-file').addEventListener('change', e => {
   const f = e.target.files[0]; if (!f) return;
   const r = new FileReader();
   r.onload = () => {
-    try { const obj = JSON.parse(r.result); if (!obj.words) throw 0; localStorage.setItem(KEY, JSON.stringify(obj)); S = load(); toast('Import kész'); renderStats(); renderWords(); updateSidebar(); }
+    try { const obj = JSON.parse(r.result); if (!obj.words) throw 0; localStorage.setItem(KEY, JSON.stringify(obj)); S = load(); toast('Import kész'); location.reload(); }
     catch (err) { toast('Hibás fájl'); }
   };
   r.readAsText(f); e.target.value = '';
 });
 $('#btn-wipe').addEventListener('click', () => {
   if (!confirm('Biztosan törlöd az összes haladást?')) return;
-  localStorage.removeItem(KEY); S = load(); applyTheme(); toast('Törölve'); renderStats(); renderWords(); updateSidebar();
+  localStorage.removeItem(KEY); location.reload();
 });
 
 // ---------- Offline letöltés ----------
@@ -1143,8 +1592,12 @@ if (location.protocol !== 'file:') {
   btn.hidden = false;
   btn.addEventListener('click', async () => {
     try {
-      const [html, css, js, dataJs, crisisJs, worldJs] = await Promise.all(['index.html', 'style.css', 'app.js', 'data.js', 'crisis.js', 'worldmap.js'].map(f => fetch(f, { cache: 'no-store' }).then(r => { if (!r.ok) throw new Error(f); return r.text(); })));
+      const files = ['index.html', 'style.css', 'app.js', 'data.js', 'crisis.js', 'worldmap.js', 'mil-hu.js', 'topics.js', 'extra.js'];
+      const [html, css, js, dataJs, crisisJs, worldJs, milJs, topicsJs, extraJs] = await Promise.all(files.map(f => fetch(f, { cache: 'no-store' }).then(r => { if (!r.ok) throw new Error(f); return r.text(); })));
       const bundled = html
+        .replace(/<script[^>]*src="mil-hu\.js"[^>]*><\/script>/, () => `<script>\n${milJs}\n<\/script>`)
+        .replace(/<script[^>]*src="topics\.js"[^>]*><\/script>/, () => `<script>\n${topicsJs}\n<\/script>`)
+        .replace(/<script[^>]*src="extra\.js"[^>]*><\/script>/, () => `<script>\n${extraJs}\n<\/script>`)
         .replace(/<link[^>]*href="style\.css"[^>]*>/, () => `<style>\n${css}\n</style>`)
         .replace(/<script[^>]*src="data\.js"[^>]*><\/script>/, () => `<script>\n${dataJs}\n<\/script>`)
         .replace(/<script[^>]*src="crisis\.js"[^>]*><\/script>/, () => `<script>\n${crisisJs}\n<\/script>`)

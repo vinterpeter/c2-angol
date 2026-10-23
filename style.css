@@ -417,3 +417,86 @@ table.acc th { color: var(--muted); font-size: .76rem; text-transform: uppercase
 .pv-face.back .sense-ex { color: rgba(255,255,255,.75); }
 .sense-ex-hu { font-size: .78rem; color: rgba(255,255,255,.6); font-style: italic; margin: 0 0 .1rem 1.1rem; }
 .sense-hu { font-size: .82rem; color: var(--muted); margin: 0 0 .15rem 1.1rem; }
+
+/* ================= Katonai: szekciók és áttekintők ================= */
+.sec-nav { margin: .2rem 0 1rem; }
+.sec-title { margin: 2rem 0 .8rem; padding-top: 1.2rem; border-top: 1px solid var(--border); }
+.grp-title { font-family: var(--font-serif); font-size: 1.15rem; margin: 1.6rem 0 .7rem; }
+.grp-title small, .unit-grp small { font-family: var(--font-sans); font-size: .78rem; color: var(--muted); font-weight: 400; margin-left: .35rem; }
+.ov-asof, .ov-credit { font-size: .8rem; color: var(--muted); margin-top: 1rem; }
+
+.rank-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: .6rem; }
+.rank-card { display: flex; flex-direction: column; align-items: center; gap: .2rem; padding: .7rem .4rem .6rem; background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); cursor: pointer; text-align: center; font: inherit; color: inherit; }
+.rank-card:hover { border-color: var(--accent); box-shadow: var(--shadow); }
+.rank-card img { height: 92px; width: auto; margin-bottom: .3rem; }
+.rank-hu { font-weight: 600; font-size: .92rem; }
+.rank-en { font-size: .82rem; color: var(--accent-soft-text); }
+.rank-code { font-size: .72rem; color: var(--muted); letter-spacing: .02em; }
+
+.chain { display: flex; flex-direction: column; align-items: stretch; max-width: 760px; }
+.chain-node { background: var(--panel); border: 1px solid var(--border); border-left: 4px solid var(--accent); border-radius: var(--radius); padding: .75rem 1rem; }
+.chain-node p { margin: .35rem 0 0; font-size: .9rem; line-height: 1.45; }
+.chain-hu { font-weight: 600; }
+.chain-en { font-size: .85rem; color: var(--accent-soft-text); display: flex; align-items: center; gap: .3rem; }
+.chain-den { color: var(--muted); font-size: .84rem !important; }
+.chain-arrow { text-align: center; color: var(--muted); font-size: 1.1rem; line-height: 1.6; }
+.ov-table td { vertical-align: top; font-size: .9rem; }
+.ov-table td small { color: var(--muted); }
+.ov-table .speak { vertical-align: middle; }
+.unit-grp { font-size: .95rem; margin: 1.1rem 0 .4rem; }
+.unit-list { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: .5rem; }
+.unit-list li { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: .55rem .75rem; font-size: .88rem; line-height: 1.4; }
+.unit-city { display: inline-block; font-size: .72rem; background: var(--accent-soft); color: var(--accent-soft-text); border-radius: 999px; padding: 0 .5rem; margin-left: .3rem; }
+.unit-en { color: var(--muted); font-size: .82rem; }
+.unit-note { color: var(--muted); font-size: .82rem; font-style: italic; }
+
+.svc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: .7rem; }
+.svc-card { background: var(--panel); border: 1px solid var(--border); border-top: 3px solid var(--accent); border-radius: var(--radius); padding: .8rem 1rem; }
+.svc-card p { margin: .4rem 0 0; font-size: .88rem; line-height: 1.45; }
+.svc-hu { font-weight: 600; text-transform: capitalize; }
+.svc-en { font-size: .85rem; color: var(--accent-soft-text); display: flex; align-items: center; gap: .3rem; }
+
+.weapon-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: .7rem; margin: .6rem 0 1.2rem; }
+.weapon-facts > div { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: .7rem .9rem; font-size: .86rem; line-height: 1.5; }
+.weapon-fig { margin: 1.4rem 0 0; background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: .9rem 1rem 1rem; }
+.weapon-fig figcaption { font-family: var(--font-serif); font-size: 1.1rem; margin-bottom: .4rem; }
+.weapon-fig figcaption small { font-family: var(--font-sans); font-size: .8rem; color: var(--muted); }
+.weapon-svg { background: #f7f5ef; border-radius: 8px; padding: .4rem; }
+.weapon-svg svg { width: 100%; height: auto; display: block; }
+.weapon-svg[data-cat="pisztoly"] svg { max-width: 480px; margin: 0 auto; }
+.weapon-svg .callout { cursor: pointer; }
+.weapon-svg .callout.hl circle { fill: #b2482f; }
+.weapon-svg .callout.hl line, .weapon-svg .callout.hl path, .weapon-svg .callout.hl polyline { stroke: #b2482f; stroke-width: 2.4; }
+.parts-legend { columns: 2 260px; column-gap: 1.4rem; margin: .8rem 0 0; padding-left: 1.6rem; font-size: .88rem; line-height: 1.55; }
+.parts-legend li { cursor: pointer; break-inside: avoid; border-radius: 4px; padding: 0 .25rem; }
+.parts-legend li.hl { background: var(--danger-soft); }
+
+/* ================= Szóbeli témák ================= */
+.tp-qhu { color: var(--muted); font-size: .85rem; margin-top: .1rem; font-style: italic; }
+.tp-vocab { margin-top: .45rem; }
+.tp-vocab .tag small { color: var(--muted); }
+.hash-mark { display: inline-block; min-width: 1.3rem; text-align: center; background: var(--warn-soft); color: var(--warn); border-radius: 4px; font-weight: 700; font-size: .8rem; }
+
+/* ================= Lista szerkesztése ================= */
+.editor { margin-top: 1.4rem; background: var(--panel); border: 1px dashed var(--border-strong); border-radius: var(--radius); padding: .6rem .9rem; }
+.editor > summary { cursor: pointer; font-weight: 600; color: var(--accent-soft-text); }
+.editor-body { margin-top: .8rem; }
+.editor-form { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem .9rem; }
+.editor-form label { display: flex; flex-direction: column; gap: .25rem; font-size: .82rem; color: var(--muted); }
+.editor-form .wide { grid-column: 1 / -1; }
+.editor-form input, .editor-form select { font: inherit; font-size: .92rem; padding: .45rem .6rem; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--bg); color: var(--text); }
+.editor-lists { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem; }
+.editor-ul { list-style: none; padding: 0; margin: .3rem 0 .5rem; max-height: 260px; overflow: auto; font-size: .88rem; }
+.editor-ul li { display: flex; align-items: center; gap: .5rem; justify-content: space-between; padding: .25rem 0; border-bottom: 1px solid var(--border); }
+.del-btn { margin-left: auto; font-size: .78rem !important; padding: .2rem .55rem !important; color: var(--danger) !important; background: transparent !important; border: 1px solid var(--danger-soft) !important; }
+.del-btn:hover { background: var(--danger-soft) !important; }
+@media (max-width: 640px) { .editor-form, .editor-lists { grid-template-columns: 1fr; } }
+
+/* ================= Oldalsáv: mentés ================= */
+.backup-box { width: 100%; }
+.backup-box > summary { list-style: none; cursor: pointer; }
+.backup-box > summary::-webkit-details-marker { display: none; }
+.backup-box[open] { background: rgba(255,255,255,.04); border-radius: 8px; padding-bottom: .3rem; }
+.backup-hint { font-size: .74rem; color: var(--sidebar-muted); margin: .2rem .6rem .4rem; line-height: 1.4; }
+.backup-box .icon-text-btn { font-size: .8rem; }
+#btn-wipe span { color: #e0855f; }
