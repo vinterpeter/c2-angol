@@ -1575,7 +1575,7 @@ async function mmTranslate(text, pair) {
   return uniq;
 }
 // csak a legfelső szintű szöveg: az aljelentések (ol/ul), stílus- és sablon-elemek nélkül
-const stripHtml = h => { const d = document.createElement('div'); d.innerHTML = h; d.querySelectorAll('ol, ul, dl, style, link, .usage-label-sense, sup').forEach(x => x.remove()); return d.textContent.replace(/\s+/g, ' ').replace(/\s+([,.;:])/g, '$1').trim(); };
+const stripHtml = h => { const d = new DOMParser().parseFromString(String(h), 'text/html').body; d.querySelectorAll('ol, ul, dl, style, link, .usage-label-sense, sup').forEach(x => x.remove()); return d.textContent.replace(/\s+/g, ' ').replace(/\s+([,.;:])/g, '$1').trim(); };
 async function wiktionary(term) {
   const d = await getJSON(`https://en.wiktionary.org/api/rest_v1/page/definition/${encodeURIComponent(term.replace(/^to /i, ''))}`);
   const en = d.en || [];
