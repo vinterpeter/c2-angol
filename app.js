@@ -120,13 +120,17 @@ function pickVoice() {
   voice = vs.find(v => /en[-_]GB/i.test(v.lang) && /Daniel|Kate|Serena|Google UK/i.test(v.name))
        || vs.find(v => /en[-_]GB/i.test(v.lang)) || vs.find(v => /^en/i.test(v.lang)) || null;
 }
-if ('speechSynthesis' in window) { pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; }
-function speak(text) {
+let huVoice = null;
+function pickHuVoice() { huVoice = speechSynthesis.getVoices().find(v => /^hu/i.test(v.lang)) || null; }
+if ('speechSynthesis' in window) { pickVoice(); pickHuVoice(); speechSynthesis.onvoiceschanged = () => { pickVoice(); pickHuVoice(); }; }
+// angol szöveg, utána (ha meg van adva) a magyar megfelelője magyar hanggal
+function speak(text, hu) {
   if (!('speechSynthesis' in window) || !text) return;
   speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text);
   u.lang = 'en-GB'; if (voice) u.voice = voice; u.rate = 0.92;
   speechSynthesis.speak(u);
+  if (hu) { const h = new SpeechSynthesisUtterance(hu); h.lang = 'hu-HU'; if (huVoice) h.voice = huVoice; h.rate = 0.95; speechSynthesis.speak(h); }
 }
 
 // ---------- Téma ----------
@@ -457,10 +461,10 @@ function ovServices() {
     <table class="acc ov-table"><tr><th>Magyarul</th><th>Angolul</th><th>Mivel foglalkozik?</th></tr>${MH.branches.map(b => `<tr><td><b>${esc(b.hu)}</b></td><td>${esc(b.t)} ${speakBtn(b.t)}</td><td>${esc(b.d_hu)}</td></tr>`).join('')}</table>`;
 }
 function ovWeapons() {
-  const parts = cat => MIL.filter(m => m.sec === 'fegyver' && m.cat === cat && m.part);
-  const legend = cat => `<ol class="parts-legend">${parts(cat).map(m => `<li data-part="${esc(m.part)}" data-speak="${esc(m.t)}"><b>${esc(m.hu)}</b> — ${esc(m.t)}</li>`).join('')}</ol>`;
+  const parts = cat => MIL.filter(m => inSec(m, 'fegyver') && m.cat === cat && m.part);
+  const legend = cat => `<ol class="parts-legend">${parts(cat).map(m => `<li data-part="${esc(m.part)}" data-speak="${esc(m.t)}" data-hu="${esc(m.hu)}"><b>${esc(m.hu)}</b> — ${esc(m.t)}</li>`).join('')}</ol>`;
   const fig = (svg, title, sub, cat) => `<figure class="weapon-fig"><figcaption><b>${title}</b> <small>${sub}</small></figcaption><div class="weapon-svg" data-cat="${cat}">${svg || ''}</div>${legend(cat)}</figure>`;
-  return `<p class="hint">A Magyar Honvédség jelenlegi egyéni fegyverei. Az ábrák sematikusak; mutass rá vagy kattints egy számra vagy részre: kiemeli a párját, és kimondja az angol nevét. A belső alkatrészek (zár, ütőszeg, helyretoló rugó stb.) a lenti kártyalistában vannak.</p>
+  return `<p class="hint">A Magyar Honvédség jelenlegi egyéni fegyverei. Az ábrák sematikusak; mutass rá egy számra vagy részre, és kiemeli a párját; kattintásra kimondja az angol, majd a magyar nevét. A belső alkatrészek (zár, ütőszeg, helyretoló rugó stb.) a lenti kártyalistában vannak.</p>
     <div class="weapon-facts">
       <div><b>CZ BREN 2 gépkarabély</b> · 5,56×45 mm NATO · gázelvételes, rövid löketű gázdugattyú, forgózáras · alumínium felső tok, polimer alsó tok · állítható, oldalra csukható válltámasz · 30 töltényes tár · hazai gyártás Kiskunfélegyházán. Elődje az AMD-65 / AK-63 gépkarabély.</div>
       <div><b>CZ P-10 C pisztoly</b> · 9×19 mm · ütőszeges (striker-fired) · polimer markolatváz, cserélhető markolathát · 15 töltényes tár · elsütőbillentyű-biztosító. Elődje a FÉG P9R pisztoly.</div>
@@ -469,8 +473,15 @@ function ovWeapons() {
     ${fig(MH.pistolSvg, 'CZ P-10 C', 'pistol · pisztoly', 'pisztoly')}`;
 }
 $('#mil-overview').addEventListener('click', e => {
+  const part = e.target.closest('[data-part]');
+  if (part) {   // ábra vagy jelmagyarázat: angol, majd magyar név
+    const fig = part.closest('.weapon-fig');
+    const li = fig && [...fig.querySelectorAll('li[data-part]')].find(x => x.dataset.part === part.dataset.part);
+    if (li) speak(li.dataset.speak, li.dataset.hu);
+    highlightPart(fig, part.dataset.part);
+    return;
+  }
   const sp = e.target.closest('[data-speak]'); if (sp) speak(sp.dataset.speak);
-  const part = e.target.closest('[data-part]'); if (part) highlightPart(part.closest('.weapon-fig'), part.dataset.part);
 });
 $('#mil-overview').addEventListener('mouseover', e => {
   const part = e.target.closest('[data-part]'); if (part) highlightPart(part.closest('.weapon-fig'), part.dataset.part);
