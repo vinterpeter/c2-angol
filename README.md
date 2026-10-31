@@ -40,3 +40,7 @@ A világtérkép alapja a [Simple World Map](https://github.com/flekschas/simple
 ## Ellenőrzés
 
 Headless Playwright end-to-end teszt fut `file://`-n és a saját szerveren is: 24 lépés (minden fül, minden kvízmód, kártya-drill mindkét irányban, válságövezet tanulás/gyakorlás mód, perzisztencia újratöltés után, mobil nézet) — 0 konzolhiba.
+
+## Élesítés (GitHub Pages)
+
+A `main` ágra kerülő változás automatikusan kimegy a https://vinterpeter.github.io/c2-angol/ címre. Előtte futtasd a `node tools/verzio.mjs` parancsot: friss verziószámot ír az `index.html` fájlhivatkozásai mögé, különben a Safari sokáig a régi JS/CSS fájlokat mutatja.
