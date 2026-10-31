@@ -126,7 +126,7 @@ if ('speechSynthesis' in window) { pickVoice(); pickHuVoice(); speechSynthesis.o
 // angol szöveg, utána (ha meg van adva) a magyar megfelelője magyar hanggal
 function speak(text, hu) {
   if (!('speechSynthesis' in window) || !text) return;
-  speechSynthesis.cancel();
+  if (speechSynthesis.speaking || speechSynthesis.pending) speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text);
   u.lang = 'en-GB'; if (voice) u.voice = voice; u.rate = 0.92;
   speechSynthesis.speak(u);
@@ -1718,14 +1718,14 @@ if (location.protocol !== 'file:') {
       const files = ['index.html', 'style.css', 'app.js', 'data.js', 'crisis.js', 'worldmap.js', 'mil-hu.js', 'topics.js', 'extra.js'];
       const [html, css, js, dataJs, crisisJs, worldJs, milJs, topicsJs, extraJs] = await Promise.all(files.map(f => fetch(f, { cache: 'no-store' }).then(r => { if (!r.ok) throw new Error(f); return r.text(); })));
       const bundled = html
-        .replace(/<script[^>]*src="mil-hu\.js"[^>]*><\/script>/, () => `<script>\n${milJs}\n<\/script>`)
-        .replace(/<script[^>]*src="topics\.js"[^>]*><\/script>/, () => `<script>\n${topicsJs}\n<\/script>`)
-        .replace(/<script[^>]*src="extra\.js"[^>]*><\/script>/, () => `<script>\n${extraJs}\n<\/script>`)
-        .replace(/<link[^>]*href="style\.css"[^>]*>/, () => `<style>\n${css}\n</style>`)
-        .replace(/<script[^>]*src="data\.js"[^>]*><\/script>/, () => `<script>\n${dataJs}\n<\/script>`)
-        .replace(/<script[^>]*src="crisis\.js"[^>]*><\/script>/, () => `<script>\n${crisisJs}\n<\/script>`)
-        .replace(/<script[^>]*src="worldmap\.js"[^>]*><\/script>/, () => `<script>\n${worldJs}\n<\/script>`)
-        .replace(/<script[^>]*src="app\.js"[^>]*><\/script>/, () => `<script>\n${js}\n<\/script>`);
+        .replace(/<script[^>]*src="mil-hu\.js[^"]*"[^>]*><\/script>/, () => `<script>\n${milJs}\n<\/script>`)
+        .replace(/<script[^>]*src="topics\.js[^"]*"[^>]*><\/script>/, () => `<script>\n${topicsJs}\n<\/script>`)
+        .replace(/<script[^>]*src="extra\.js[^"]*"[^>]*><\/script>/, () => `<script>\n${extraJs}\n<\/script>`)
+        .replace(/<link[^>]*href="style\.css[^"]*"[^>]*>/, () => `<style>\n${css}\n</style>`)
+        .replace(/<script[^>]*src="data\.js[^"]*"[^>]*><\/script>/, () => `<script>\n${dataJs}\n<\/script>`)
+        .replace(/<script[^>]*src="crisis\.js[^"]*"[^>]*><\/script>/, () => `<script>\n${crisisJs}\n<\/script>`)
+        .replace(/<script[^>]*src="worldmap\.js[^"]*"[^>]*><\/script>/, () => `<script>\n${worldJs}\n<\/script>`)
+        .replace(/<script[^>]*src="app\.js[^"]*"[^>]*><\/script>/, () => `<script>\n${js}\n<\/script>`);
       const blob = new Blob([bundled], { type: 'text/html' });
       const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'c2-angol-offline.html'; a.click();
       setTimeout(() => URL.revokeObjectURL(a.href), 1000);
