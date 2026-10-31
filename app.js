@@ -77,9 +77,10 @@ function guessKey(term, ex) {
 }
 function normalizeOwn(store, c) {
   const base = { hu: c.hu || '', en: c.def || '', ex: c.ex || '', ex_hu: c.ex_hu || '', own: true };
-  if (store === 'words') return Object.assign(base, { w: c.en, pos: '', ipa: '', syn: [], ant: [], col: [], tag: 'saját' });
+  const syn = c.syn ? c.syn.split(',').map(x => x.trim()).filter(Boolean) : [];
+  if (store === 'words') return Object.assign(base, { w: c.en, pos: c.pos || '', ipa: '', syn, ant: [], col: [], tag: 'saját' });
   if (store === 'phrases') return Object.assign(base, { p: c.en, type: 'phrasal', lvl: '', key: guessKey(c.en, c.ex), reg: 'neutral' });
-  if (store === 'verbs') return Object.assign(base, { v: c.en.replace(/^to\s+/i, ''), forms: '', syn: [], col: [], key: guessKey(c.en, c.ex) });
+  if (store === 'verbs') return Object.assign(base, { v: c.en.replace(/^to\s+/i, ''), forms: c.forms || '', syn, col: [], key: guessKey(c.en, c.ex) });
   if (store === 'linking') return Object.assign(base, { t: c.en, fn: 'own', fnHu: 'saját' });
   if (store === 'mil') return Object.assign(base, { t: c.en, cat: 'saját', sec: c.sec || 'szokincs', top: true });
   return Object.assign(base, { t: c.en, topic: c.topic || 'saját', topicHu: 'saját' });
@@ -395,12 +396,12 @@ const TYPE_HU = { idiom: 'idióma', collocation: 'kollokáció', expression: 'ki
 const REG_HU = { formal: 'formális', informal: 'informális', neutral: 'semleges' };
 
 // ============================================================
-// KATONAI — szekciók (rendfokozatok, felépítés, haderőnemek, fegyverek, szókincs, NATO)
+// KATONAI — szekciók (felépítés, haderőnemek, fegyverek, szókincs, NATO)
 // ============================================================
-const MIL_SECS = { rang: 'Rendfokozatok', szerv: 'Felépítés, szervezetek', haderonem: 'Haderőnemek, fegyvernemek', fegyver: 'Gépkarabély, pisztoly', szokincs: 'Leggyakoribb kifejezések', szak: 'Szakszókincs témák szerint' };
+const MIL_SECS = { szerv: 'Felépítés, szervezetek', haderonem: 'Haderőnemek, fegyvernemek', fegyver: 'Gépkarabély, pisztoly', szokincs: 'Leggyakoribb kifejezések', szak: 'Szakszókincs témák szerint' };
 // egy tétel több részben is szerepelhet (secs); a „Leggyakoribb” rész a top-jelölésű tételeket mutatja
 function inSec(m, sec) { return sec === 'szokincs' ? !!(m.top || (m.own && m.sec === 'szokincs')) : (m.secs || [m.sec || 'szak']).includes(sec) || (m.own && m.sec === sec); }
-let milSec = 'rang', milCat = 'all';
+let milSec = 'szerv', milCat = 'all';
 function milSecItems() {
   return MIL.filter(m => inSec(m, milSec));
 }
@@ -431,8 +432,7 @@ function milRefresh() { if (milSec !== 'nato') { buildMilCats(); renderMil(); ml
 // ---------- Áttekintő nézetek ----------
 function renderMilOverview() {
   const box = $('#mil-overview');
-  if (milSec === 'rang') box.innerHTML = ovRanks();
-  else if (milSec === 'szerv') box.innerHTML = ovOrg();
+  if (milSec === 'szerv') box.innerHTML = ovOrg();
   else if (milSec === 'haderonem') box.innerHTML = ovServices();
   else if (milSec === 'fegyver') box.innerHTML = ovWeapons();
   else if (milSec === 'szokincs') box.innerHTML = `<p class="hint">A szóbeli vizsgán leggyakrabban használt katonai szavak és kifejezések: szolgálat, kiképzés, műveletek, NATO-együttműködés, katasztrófavédelem, rádióforgalmazás. Mindegyikhez példamondat és fordítás tartozik.</p>`;
@@ -440,15 +440,6 @@ function renderMilOverview() {
   else box.innerHTML = '';
 }
 function asOfNote() { return MH.asOf ? `<p class="ov-asof">Állapot: ${esc(MH.asOf)}. Az alakulatnevek és a vezetők változhatnak; vizsga előtt érdemes a honvedelem.hu oldalon ellenőrizni.</p>` : ''; }
-function ovRanks() {
-  if (!MH.ranks) return '';
-  return `<p class="hint">A Magyar Honvédség rendfokozatai a hivatalos angol megnevezéssel és a NATO STANAG 2116 szerinti kóddal (OR = legénység és altisztek, OF = tisztek). Kattints egy rendfokozatra a kiejtéshez. A jelzések itt a lövészek (sötétzöld) színével láthatók; a szín fegyvernemenként eltér.</p>` +
-    MH.rankGroups.map(g => `<h4 class="grp-title">${esc(g.hu)} <small>${esc(g.en)}</small></h4>
-    <div class="rank-grid">${MH.ranks.filter(r => r.grp === g.id).map(r => `<button class="rank-card" data-speak="${esc(r.t)}">
-      ${MH.insignia && MH.insignia[r.ins] ? `<img src="${MH.insignia[r.ins]}" alt="${esc(r.hu)} rendfokozati jelzés" loading="lazy">` : ''}
-      <span class="rank-hu">${esc(r.hu)}</span><span class="rank-en">${esc(r.t)}</span><span class="rank-code">${esc(r.code)}${r.abbr ? ' · ' + esc(r.abbr) : ''}</span></button>`).join('')}</div>`).join('') +
-    `<p class="ov-credit">Rendfokozati jelzések: Wikimedia Commons, „Rank Army Hungary” sorozat (Duke83), CC0.</p>`;
-}
 function ovOrg() {
   if (!MH.structure) return '';
   const chain = MH.structure.map((n, i) => `<div class="chain-node"><div class="chain-hu">${esc(n.hu)}</div><div class="chain-en">${esc(n.en)} ${speakBtn(n.en)}</div><p>${esc(n.d_hu)}</p><p class="chain-den">${esc(n.d_en)}</p></div>${i < MH.structure.length - 1 ? '<div class="chain-arrow" aria-hidden="true">↓</div>' : ''}`).join('');
@@ -1075,7 +1066,7 @@ function mlBatchCards() {
   return n === 'all' ? base : base.slice(0, parseInt(n));
 }
 function mlUpdateCount() { $('#ml-count').textContent = mlBatchCards().length; }
-setMilSec('rang');
+setMilSec('szerv');
 
 $('#ml-dir-chips').addEventListener('click', e => {
   const b = e.target.closest('.chip'); if (!b) return;
@@ -1340,6 +1331,11 @@ function renderVerbs() {
           ${v.col && v.col.length ? `<span class="lbl">Kollokációk</span><div class="row">${v.col.map(x => `<span class="tag col">${esc(x)}</span>`).join('')}</div>` : ''}
         </div>
       </div>
+      ${v.preps && v.preps.length ? `<span class="lbl">Elöljárók</span><div class="preps">${v.preps.map(p => `<div class="prep">
+        <div class="prep-head"><span class="prep-p">${esc(p.p)}</span><span class="prep-pat">${esc(p.pat)}</span><span class="prep-hu">${esc(p.hu)}</span></div>
+        <div class="ex">${esc(p.ex)} ${speakBtn(p.ex)}</div>
+        <div class="ex-hu">${esc(p.ex_hu)}</div>
+      </div>`).join('')}</div>` : ''}
       <div class="entry-actions">
         <button class="danger" data-grade="0">Újra</button>
         <button class="ok" data-grade="1">Tudom</button>
@@ -1522,12 +1518,19 @@ function renderEditor(store) {
   const secOpts = store === 'mil' ? `<label>Melyik részbe?<select data-f="sec">${Object.entries(MIL_SECS).map(([k, v]) => `<option value="${k}"${k === milSec ? ' selected' : ''}>${esc(v)}</option>`).join('')}</select></label>` : '';
   const topicOpts = store === 'topics' ? `<label>Témakör<select data-f="topic">${TOPICS.map(t => `<option value="${esc(t.id)}">${esc(t.hu)}</option>`).join('')}</select></label>` : '';
   body.innerHTML = `
+    <div class="autofill">
+      <label class="wide">Gyors felvétel — írj be egy angol <i>vagy</i> magyar kifejezést, a többit kitölti a rendszer
+        <span class="autofill-row"><input data-auto placeholder="pl. call off · lefújni · deploy · bevetni"><button type="button" class="primary" data-autofill>Kitöltés</button></span>
+      </label>
+      <p class="autofill-status" data-auto-status></p>
+    </div>
     <form class="editor-form" autocomplete="off">
       <label>Angolul *<input data-f="en" required placeholder="${store === 'verbs' ? 'pl. to deploy' : 'angol kifejezés'}"></label>
       <label>Magyarul *<input data-f="hu" required placeholder="magyar jelentés"></label>
       <label class="wide">Angol magyarázat<input data-f="def" placeholder="rövid angol definíció (nem kötelező)"></label>
       <label class="wide">Angol példamondat<input data-f="ex" placeholder="példamondat (nem kötelező)"></label>
       <label class="wide">Magyar fordítás<input data-f="ex_hu" placeholder="a példamondat fordítása (nem kötelező)"></label>
+      <input type="hidden" data-f="syn">
       ${secOpts}${topicOpts}
       <div class="wide"><button class="primary" type="submit">Hozzáadás</button></div>
     </form>
@@ -1540,6 +1543,114 @@ function renderEditor(store) {
       </div>
     </div>`;
 }
+
+// ---------- Automatikus kitöltés (angol vagy magyar kifejezésből) ----------
+// 1) saját adatbázis  2) MyMemory fordítás  3) Wiktionary definíció + példa  4) Datamuse szinonimák
+const HU_CHARS = /[áéíóöőúüű]/i;
+// minden találatból összerakja a mezőket (az első nem üres érték nyer); store: melyik listában van már
+function localLookup(term) {
+  const q = norm(term).replace(/^to /, '');
+  let r = null;
+  for (const st of STORES) for (const x of ARR[st]) {
+    const en = norm(KEYF[st](x)).replace(/^to /, '');
+    const hus = norm(x.hu || '').split(/[;,]\s*/).map(h => h.replace(/\s*\(.*?\)\s*/g, '').trim());
+    if (en !== q && !hus.includes(q)) continue;
+    const c = { en: (st === 'verbs' && x.pos !== 'phrase' ? 'to ' : '') + KEYF[st](x), hu: x.hu, def: x.en || '', ex: x.ex || '', ex_hu: x.ex_hu || '', syn: (x.syn || []).join(', '), forms: x.forms || '' };
+    if (!r) r = Object.assign(c, { stores: [st] });
+    else { r.stores.push(st); for (const k in c) if (!r[k] && c[k]) r[k] = c[k]; }
+  }
+  return r;
+}
+async function getJSON(url, ms = 8000) {
+  const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), ms);
+  try { const r = await fetch(url, { signal: ctl.signal }); if (!r.ok) throw new Error(r.status); return await r.json(); } finally { clearTimeout(t); }
+}
+async function mmTranslate(text, pair) {
+  const d = await getJSON(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${pair}`);
+  const main = (d.responseData && d.responseData.translatedText || '').trim();
+  const srcWords = norm(text).split(/\s+/);
+  const alts = (d.matches || []).map(m => (m.translation || '').trim())
+    .filter(x => x && x.length < 60 && x !== x.toUpperCase() && !srcWords.includes(norm(x)));
+  const uniq = []; [main, ...alts].forEach(x => { const k = norm(x).replace(/[.!]$/, ''); if (x && !uniq.some(u => norm(u).replace(/[.!]$/, '') === k)) uniq.push(x.replace(/[.]$/, '')); });
+  return uniq;
+}
+// csak a legfelső szintű szöveg: az aljelentések (ol/ul), stílus- és sablon-elemek nélkül
+const stripHtml = h => { const d = document.createElement('div'); d.innerHTML = h; d.querySelectorAll('ol, ul, dl, style, link, .usage-label-sense, sup').forEach(x => x.remove()); return d.textContent.replace(/\s+/g, ' ').replace(/\s+([,.;:])/g, '$1').trim(); };
+async function wiktionary(term) {
+  const d = await getJSON(`https://en.wiktionary.org/api/rest_v1/page/definition/${encodeURIComponent(term.replace(/^to /i, ''))}`);
+  const en = d.en || [];
+  for (const m of en) for (const df of m.definitions || []) {
+    const def = stripHtml(df.definition || '');
+    if (!def || /^\(?(obsolete|archaic|rare|dialect)/i.test(def)) continue;
+    const exs = (df.examples || []).map(stripHtml).filter(x => x.split(' ').length >= 5 && x.split(' ').length <= 25);
+    return { pos: (m.partOfSpeech || '').toLowerCase(), def, ex: exs[0] || '' };
+  }
+  return null;
+}
+// Tatoeba: valódi, ember által fordított angol–magyar mondatpár
+async function tatoeba(term, exact = true) {
+  const d = await getJSON(`https://api.tatoeba.org/unstable/sentences?lang=eng&q=${encodeURIComponent(exact ? '"' + term + '"' : term)}&trans:lang=hun&sort=relevance&limit=20`, 7000);
+  const ok = (d.data || []).filter(x => !x.is_unapproved && x.translations && x.translations.some(t => t.lang === 'hun'))
+    .map(x => ({ ex: x.text, ex_hu: x.translations.find(t => t.lang === 'hun').text, n: x.text.split(' ').length }))
+    .filter(x => x.n >= 5 && x.n <= 20 && !/\b(Tom|Mary|Ziri|Sami|Layla|Rima|Skura|Yanni)\b/.test(x.ex))
+    .filter(x => term.toLowerCase().split(/\s+/).every(w => x.ex.toLowerCase().includes(w.slice(0, Math.max(3, w.length - 2)))));
+  ok.sort((a, b) => Math.abs(a.n - 11) - Math.abs(b.n - 11));
+  if (!ok[0] && exact && term.includes(' ')) return tatoeba(term, false);
+  return ok[0] || null;
+}
+async function datamuse(term) {
+  const d = await getJSON(`https://api.datamuse.com/words?ml=${encodeURIComponent(term)}&max=6`, 5000);
+  return d.filter(x => (x.tags || []).includes('syn')).slice(0, 4).map(x => x.word);
+}
+async function autofill(det) {
+  const store = det.dataset.store, inp = $('[data-auto]', det), status = $('[data-auto-status]', det);
+  const term = inp.value.trim(); if (!term) { inp.focus(); return; }
+  const set = (f, v) => { const el = $(`[data-f="${f}"]`, det); if (el && v != null) el.value = v; };
+  ['en', 'hu', 'def', 'ex', 'ex_hu', 'syn'].forEach(f => set(f, ''));
+  const loc = localLookup(term);
+  if (loc) {
+    Object.entries(loc).forEach(([k, v]) => { if (k !== 'stores') set(k, v); });
+    status.textContent = loc.stores.includes(store)
+      ? 'Ez a kifejezés már szerepel ebben a listában — nem kell újra felvenni.'
+      : `Kitöltve a saját adatbázisból (megvan itt: ${loc.stores.map(st => STORE_LABEL[st]).join(', ')}). Ellenőrizd, aztán „Hozzáadás”.`;
+    return;
+  }
+  status.textContent = 'Keresés… (fordítás, definíció, példamondat)';
+  try {
+    let en = term, hu = '';
+    let isHu = HU_CHARS.test(term);
+    if (!isHu) {
+      const tr = await mmTranslate(term, 'en|hu');
+      // ha az angol→magyar fordítás változatlanul adja vissza, valószínűleg magyar szó volt
+      if (tr[0] && norm(tr[0]) === norm(term)) isHu = true; else hu = tr.slice(0, 3).join(', ');
+    }
+    if (isHu) {
+      const tr = await mmTranslate(term, 'hu|en');
+      // a csupa nagybetűs vagy mondatkezdő nagybetűs fordítást kisbetűsítjük (tulajdonnév ritka egy szótárban)
+      const pick = tr.find(x => x !== x.toUpperCase()) || tr[0] || term;
+      en = pick.replace(/[.!]$/, ''); if (en === en.toUpperCase() || /^[A-Z][a-z]/.test(en)) en = en.toLowerCase(); hu = term;
+    }
+    if (store === 'verbs' && !/^to /i.test(en) && en.split(' ').length <= 3) en = 'to ' + en.replace(/^to /i, '');
+    set('en', en); set('hu', hu);
+    const bare = en.replace(/^to /i, '');
+    const [wk, tt, syn] = await Promise.all([
+      wiktionary(bare).catch(() => null),
+      tatoeba(bare).catch(() => null),
+      store === 'words' || store === 'verbs' ? datamuse(bare).catch(() => []) : Promise.resolve([])]);
+    const src = ['fordítás: MyMemory'];
+    if (wk) { set('def', wk.def); if (wk.pos) det.dataset.pos = wk.pos; src.push('definíció: Wiktionary'); }
+    if (tt) { set('ex', tt.ex); set('ex_hu', tt.ex_hu); src.push('példamondat és fordítása: Tatoeba'); }
+    else if (wk && wk.ex) { set('ex', wk.ex); const t = await mmTranslate(wk.ex, 'en|hu').catch(() => []); set('ex_hu', t[0] || ''); src.push('példamondat: Wiktionary'); }
+    if (syn && syn.length) { set('syn', syn.join(', ')); src.push('szinonimák: Datamuse'); }
+    const miss = [!wk && 'angol magyarázat', !tt && !(wk && wk.ex) && 'példamondat'].filter(Boolean);
+    status.textContent = `Kitöltve (${src.join(', ')}). ${miss.length ? `Nem találtam: ${miss.join(', ')} — ezt írd be kézzel, ha szeretnéd. ` : ''}Gépi kitöltés — nézd át, javíts, ha kell, aztán „Hozzáadás”.`;
+  } catch (e) {
+    status.textContent = 'Az automatikus kitöltéshez internet kell (vagy a szolgáltatás most nem elérhető). A mezőket kézzel is kitöltheted.';
+    set('en', HU_CHARS.test(term) ? '' : term); set('hu', HU_CHARS.test(term) ? term : '');
+  }
+}
+document.addEventListener('click', e => { const b = e.target.closest('[data-autofill]'); if (b) autofill(b.closest('.editor')); });
+document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.matches('[data-auto]')) { e.preventDefault(); autofill(e.target.closest('.editor')); } });
 document.addEventListener('submit', e => {
   const det = e.target.closest('.editor'); if (!det) return;
   e.preventDefault();
@@ -1548,6 +1659,7 @@ document.addEventListener('submit', e => {
   if (!f.en || !f.hu) { toast('Az angol és a magyar mező kötelező'); return; }
   const key = ownKeyOf(store, f);
   if (ARR[store].some(x => KEYF[store](x).toLowerCase() === key.toLowerCase())) { toast('Ez már szerepel a listában'); return; }
+  if (det.dataset.pos) { f.pos = det.dataset.pos; delete det.dataset.pos; }
   f.at = Date.now();
   S.custom[store].push(f); save(); refreshStore(store); toast('Hozzáadva — a kártyák közé is bekerült');
   const first = $('.editor-form [data-f="en"]', det); if (first) first.focus();
