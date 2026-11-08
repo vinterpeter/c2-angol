@@ -243,12 +243,7 @@ function wordEntry(w) {
     </div>
     <div class="entry-body" hidden>
       <div class="entry-body-grid">
-        <div>
-          <div>${esc(w.en)}</div>
-          <span class="lbl">Példa</span>
-          <div class="ex">${esc(w.ex)} ${speakBtn(w.ex)}</div>
-          ${w.ex_hu ? `<div class="ex-hu">${esc(w.ex_hu)}</div>` : ''}
-        </div>
+        <div>${sensesBody(w)}</div>
         <div>
           ${w.syn && w.syn.length ? `<span class="lbl">Szinonimák</span>
           <div class="row">${w.syn.map(s => `<span class="tag syn" data-speak="${esc(s)}">${esc(s)}</span>`).join('')}</div>` : ''}
@@ -322,6 +317,12 @@ $('#wd-speak').addEventListener('click', () => { if (wd.cards[wd.i]) speak(wd.ca
 $('#wd-ok').addEventListener('click', () => wdGrade(true));
 $('#wd-fail').addEventListener('click', () => wdGrade(false));
 
+function wdBackSenses(w, showHu) {
+  if (hasSenses(w)) { $('#wd-back-def').innerHTML = sensesBack(w.senses, showHu); $('#wd-back-ex').textContent = ''; $('#wd-back-exhu').textContent = ''; return; }
+  $('#wd-back-def').textContent = w.en;
+  $('#wd-back-ex').textContent = w.ex || '';
+  $('#wd-back-exhu').textContent = w.ex_hu || '';
+}
 function wdShowCard() {
   const w = wd.cards[wd.i];
   wd.flipped = false;
@@ -335,17 +336,13 @@ function wdShowCard() {
     $('#wd-front-word').textContent = w.w;
     $('#wd-front-ex').textContent = w.ex || '';
     $('#wd-back-main').textContent = w.hu;
-    $('#wd-back-def').textContent = w.en;
-    $('#wd-back-ex').textContent = w.ex || '';
-    $('#wd-back-exhu').textContent = w.ex_hu || '';
+    wdBackSenses(w, true);
     if (S.settings.speak) speak(w.w);
   } else {
     $('#wd-front-word').textContent = w.hu;
     $('#wd-front-ex').textContent = '';
     $('#wd-back-main').textContent = w.w;
-    $('#wd-back-def').textContent = w.en;
-    $('#wd-back-ex').textContent = w.ex || '';
-    $('#wd-back-exhu').textContent = w.ex_hu || '';
+    wdBackSenses(w, false);
   }
 }
 
@@ -641,9 +638,9 @@ $('#cards-dir-chips').addEventListener('click', e => { const b = e.target.closes
 
 // Egységes kártya-nézet a három forrásra
 function toCard(source, item) {
-  if (source === 'words') return { key: item.w, store: 'words', front: item.w, meta: [item.pos, item.ipa].filter(Boolean).join(' · '), hu: item.hu, en: item.en, ex: item.ex, ex_hu: item.ex_hu, syn: item.syn && item.syn.length ? item.syn : null, ant: item.ant, col: item.col && item.col.length ? item.col : null, speak: item.w };
-  if (source === 'phrases') return { key: item.p, store: 'phrases', front: item.p, meta: [TYPE_HU[item.type], REG_HU[item.reg]].filter(Boolean).join(' · '), hu: item.hu, en: item.en, ex: item.ex, ex_hu: item.ex_hu, speak: item.p };
-  if (source === 'verbs') return { key: item.v, store: 'verbs', front: (item.pos === 'phrase' ? '' : 'to ') + item.v, meta: item.forms || 'ige', hu: item.hu, en: item.en, ex: item.ex, ex_hu: item.ex_hu, syn: item.syn && item.syn.length ? item.syn : null, col: item.col && item.col.length ? item.col : null, speak: item.v };
+  if (source === 'words') return { key: item.w, store: 'words', front: item.w, meta: [item.pos, item.ipa].filter(Boolean).join(' · '), hu: item.hu, en: item.en, ex: item.ex, ex_hu: item.ex_hu, syn: item.syn && item.syn.length ? item.syn : null, ant: item.ant, col: item.col && item.col.length ? item.col : null, senses: item.senses, speak: item.w };
+  if (source === 'phrases') return { key: item.p, store: 'phrases', front: item.p, meta: [TYPE_HU[item.type], REG_HU[item.reg]].filter(Boolean).join(' · '), hu: item.hu, en: item.en, ex: item.ex, ex_hu: item.ex_hu, senses: item.senses, speak: item.p };
+  if (source === 'verbs') return { key: item.v, store: 'verbs', front: (item.pos === 'phrase' ? '' : 'to ') + item.v, meta: item.forms || 'ige', hu: item.hu, en: item.en, ex: item.ex, ex_hu: item.ex_hu, syn: item.syn && item.syn.length ? item.syn : null, col: item.col && item.col.length ? item.col : null, senses: item.senses, speak: item.v };
   if (source === 'linking') return { key: item.t, store: 'linking', front: item.t, meta: item.fnHu || 'átvezető', hu: item.hu, en: item.en, ex: item.ex, ex_hu: item.ex_hu, speak: item.t };
   if (source === 'topics') return { key: item.t, store: 'topics', front: item.t, meta: item.topicHu || 'szóbeli téma', hu: item.hu, en: item.en, ex: item.ex, ex_hu: item.ex_hu, speak: item.t };
   return { key: item.t, store: 'mil', front: item.t, meta: item.cat + (item.abbr ? ' · ' + item.abbr : ''), hu: item.hu, en: item.en, ex: item.ex, ex_hu: item.ex_hu, speak: item.t };
@@ -708,7 +705,8 @@ function reveal() {
   h += `<div>${esc(c.en)}</div>`;
   if (c.syn) h += `<span class="lbl">Szinonimák</span><div class="row">${c.syn.map(s => `<span class="tag syn">${esc(s)}</span>`).join('')}</div>`;
   if (c.ant && c.ant.length) h += `<span class="lbl">Ellentét</span><div class="row">${c.ant.map(s => `<span class="tag ant">${esc(s)}</span>`).join('')}</div>`;
-  h += `<span class="lbl">Példa</span><div class="ex">${esc(c.ex)}</div>${c.ex_hu ? `<div class="ex-hu">${esc(c.ex_hu)}</div>` : ''}`;
+  if (hasSenses(c)) h += `<span class="lbl">Jelentések</span>` + c.senses.map((s, i) => `<div class="sense-row"><span class="sense-n">${i + 1}.</span><span><b>${esc(s.hu)}</b> — ${esc(s.en)}</span></div><div class="ex">${esc(s.ex)}</div>${s.ex_hu ? `<div class="ex-hu">${esc(s.ex_hu)}</div>` : ''}`).join('');
+  else h += `<span class="lbl">Példa</span><div class="ex">${esc(c.ex)}</div>${c.ex_hu ? `<div class="ex-hu">${esc(c.ex_hu)}</div>` : ''}`;
   if (c.col) h += `<span class="lbl">Kollokációk</span><div class="row">${c.col.map(s => `<span class="tag col">${esc(s)}</span>`).join('')}</div>`;
   $('#card-back').innerHTML = h; $('#card-back').hidden = false;
   $('#card-reveal').hidden = true; $('#card-grade').hidden = false;
@@ -896,19 +894,28 @@ $('#pv-batch-chips').addEventListener('click', e => {
   pvUpdateCount();
 });
 
-function pvSensesBody(p) {
-  if (p.senses && p.senses.length > 1) {
-    return p.senses.map((s, i) => `
+// Több jelentés (senses: [{en, hu, ex, ex_hu}]) a listák lenyitott soraiban; ha nincs, a fő definíció és példa
+function sensesBody(p) {
+  if (hasSenses(p)) {
+    return `<span class="lbl">Jelentések</span>` + p.senses.map((s, i) => `
       <div class="sense-row"><span class="sense-n">${i + 1}.</span><span>${esc(s.en)}</span></div>
       <div class="sense-hu">${esc(s.hu)}</div>
       <div class="ex">${esc(s.ex)} ${speakBtn(s.ex)}</div>
       ${s.ex_hu ? `<div class="ex-hu">${esc(s.ex_hu)}</div>` : ''}`).join('');
   }
-  return `<div>${esc(p.en)}</div>
-    <span class="lbl">Példa</span>
-    <div class="ex">${esc(p.ex)} ${speakBtn(p.ex)}</div>
+  return `${p.en ? `<div>${esc(p.en)}</div>` : ''}
+    ${p.ex ? `<span class="lbl">Példa</span><div class="ex">${esc(p.ex)} ${speakBtn(p.ex)}</div>` : ''}
     ${p.ex_hu ? `<div class="ex-hu">${esc(p.ex_hu)}</div>` : ''}`;
 }
+const pvSensesBody = sensesBody;
+// Ugyanez a fordítható kártyák hátoldalára; showHu: a jelentésenkénti magyar szó is kiíródik
+function sensesBack(senses, showHu) {
+  return senses.map((s, i) =>
+    `<div class="sense-row"><span class="sense-n">${i + 1}.</span> ${showHu ? `<b>${esc(s.hu)}</b> — ` : ''}${esc(s.en)}</div>
+     <div class="pv-example sense-ex">${esc(s.ex)}</div>
+     ${s.ex_hu ? `<div class="pv-example sense-ex-hu">${esc(s.ex_hu)}</div>` : ''}`).join('');
+}
+function hasSenses(x) { return !!(x && x.senses && x.senses.length > 1); }
 function renderPVList() {
   const q = norm($('#pv-search').value);
   const srcList = pvSource();
@@ -973,11 +980,7 @@ function pvShowCard() {
     $('#pv-front-ex').textContent = re ? p.ex.replace(re, '______') : (p.ex || '');
     $('#pv-back-main').textContent = p.hu;
     if (multi) {
-      $('#pv-back-def').innerHTML = p.senses.map((s, i) =>
-        `<div class="sense-row"><span class="sense-n">${i + 1}.</span> <b>${esc(s.hu)}</b> — ${esc(s.en)}</div>
-         <div class="pv-example sense-ex">${esc(s.ex)}</div>
-         ${s.ex_hu ? `<div class="pv-example sense-ex-hu">${esc(s.ex_hu)}</div>` : ''}`
-      ).join('');
+      $('#pv-back-def').innerHTML = sensesBack(p.senses, true);
       $('#pv-back-ex').textContent = '';
       $('#pv-back-exhu').textContent = '';
     } else {
@@ -991,11 +994,7 @@ function pvShowCard() {
     $('#pv-front-ex').textContent = '';
     $('#pv-back-main').textContent = p.p;
     if (multi) {
-      $('#pv-back-def').innerHTML = p.senses.map((s, i) =>
-        `<div class="sense-row"><span class="sense-n">${i + 1}.</span> ${esc(s.en)}</div>
-         <div class="pv-example sense-ex">${esc(s.ex)}</div>
-         ${s.ex_hu ? `<div class="pv-example sense-ex-hu">${esc(s.ex_hu)}</div>` : ''}`
-      ).join('');
+      $('#pv-back-def').innerHTML = sensesBack(p.senses, false);
       $('#pv-back-ex').textContent = '';
       $('#pv-back-exhu').textContent = '';
     } else {
@@ -1272,6 +1271,7 @@ function makeLearn(tab, cfg) {
     $$('.pv-flip-hint', el('drill')).forEach(x => x.textContent = `${st.i + 1} / ${st.cards.length} · kattints a megfordításhoz`);
     setTxt('front-word', f.front); setTxt('front-meta', f.meta); setTxt('front-ex', f.frontEx);
     setTxt('back-main', f.main); setTxt('back-def', f.def); setTxt('back-ex', f.ex); setTxt('back-exhu', f.exhu);
+    if (f.senses && f.senses.length > 1) { el('back-def').innerHTML = sensesBack(f.senses, st.dir === 'en'); setTxt('back-ex', ''); setTxt('back-exhu', ''); }
     if (st.dir === 'en' && S.settings.speak) speakCur();
   }
   function flip() {
@@ -1332,11 +1332,7 @@ function renderVerbs() {
     </div>
     <div class="entry-body" hidden>
       <div class="entry-body-grid">
-        <div>
-          ${v.en ? `<div>${esc(v.en)}</div>` : ''}
-          ${v.ex ? `<span class="lbl">Példa</span><div class="ex">${esc(v.ex)} ${speakBtn(v.ex)}</div>` : ''}
-          ${v.ex_hu ? `<div class="ex-hu">${esc(v.ex_hu)}</div>` : ''}
-        </div>
+        <div>${sensesBody(v)}</div>
         <div>
           ${v.syn && v.syn.length ? `<span class="lbl">Szinonimák</span><div class="row">${v.syn.map(x => `<span class="tag syn" data-speak="${esc(x)}">${esc(x)}</span>`).join('')}</div>` : ''}
           ${v.col && v.col.length ? `<span class="lbl">Kollokációk</span><div class="row">${v.col.map(x => `<span class="tag col">${esc(x)}</span>`).join('')}</div>` : ''}
@@ -1361,8 +1357,8 @@ $('#vb-list').addEventListener('click', e => entryClick(e, 'verbs', renderVerbs)
 makeLearn('verbs', {
   pfx: 'vb', store: 'verbs', unit: 'ige', key: v => v.v, speakOf: v => v.v, batch: vbBatch, onBack: vbUpdateCount,
   face: (v, dir) => dir === 'en'
-    ? { front: (v.pos === 'phrase' ? '' : 'to ') + v.v, meta: v.forms, frontEx: v.ex && v.key ? v.ex.replace(v.key, '______') : '', main: v.hu, def: v.en, ex: v.ex, exhu: v.ex_hu }
-    : { front: v.hu, meta: '', frontEx: '', main: (v.pos === 'phrase' ? '' : 'to ') + v.v + (v.forms ? '  (' + v.forms + ')' : ''), def: v.en, ex: v.ex, exhu: v.ex_hu }
+    ? { front: (v.pos === 'phrase' ? '' : 'to ') + v.v, meta: v.forms, frontEx: v.ex && v.key ? v.ex.replace(v.key, '______') : '', main: v.hu, def: v.en, ex: v.ex, exhu: v.ex_hu, senses: v.senses }
+    : { front: v.hu, meta: '', frontEx: '', main: (v.pos === 'phrase' ? '' : 'to ') + v.v + (v.forms ? '  (' + v.forms + ')' : ''), def: v.en, ex: v.ex, exhu: v.ex_hu, senses: v.senses }
 });
 vbRefresh();
 
